@@ -9,7 +9,12 @@
 #include <cstdlib>
 #include <optional>
 #include <set>
+#include <math.h>
+#include <algorithm>
+#include <fstream>
 
+
+static std::vector<char> readFile(const std::string& filename);
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
 
@@ -21,6 +26,12 @@ struct QueueFamilyIndices
     bool isComplete() {
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
+};
+
+struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> presentModes;
 };
 
 class CatastrophicVulkanApplication{
@@ -37,6 +48,10 @@ private:
     VkQueue GraphicsQueue;
     VkSurfaceKHR surface;
     VkQueue presentQueue;
+    VkSwapchainKHR swapChain;
+
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
 
     void initWindow();
     void initVulkan();
@@ -46,6 +61,9 @@ private:
     void cleanup();
     void createInstance();
     void createLogicalDevice();
+    void createSwapChain();
+    void createImageViews();
+    void createGraphicsPipeline();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
@@ -71,9 +89,22 @@ private:
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
 
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);
+    bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU);
     void PickPhysicalGPU();
+    SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice physicalGPU);
+    VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+
+    std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> swapChainImageViews;
+    
 
     const std::vector<const char*> validationLayers = {
         "VK_LAYER_KHRONOS_validation"
+    };
+
+    const std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 };
