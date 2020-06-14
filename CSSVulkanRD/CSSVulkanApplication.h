@@ -13,10 +13,12 @@
 #include <algorithm>
 #include <fstream>
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
 
 static std::vector<char> readFile(const std::string& filename);
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
+VkShaderModule createShader(VkDevice GPU,const std::vector<char>& shaderBytecode);
 
 struct QueueFamilyIndices
 {
@@ -49,6 +51,15 @@ private:
     VkSurfaceKHR surface;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
+    VkPipelineLayout pipelineLayout;
+    VkRenderPass renderPass;
+    VkPipeline graphicsPipeline;
+    VkCommandPool commandPool;
+
+    //VkSemaphore imageAvailableSemaphore;
+    //VkSemaphore renderFinishedSemaphore;
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
 
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
@@ -64,6 +75,17 @@ private:
     void createSwapChain();
     void createImageViews();
     void createGraphicsPipeline();
+    void createRenderPass();
+    void createFramebuffers();
+    void createCommandPools();
+    void createCommandBuffers();
+    void createSemaphores();
+    void createSyncObjects();
+
+    void drawFrame();
+    std::vector<VkFence> inFlightFences;
+    std::vector<VkFence> imagesInFlight;
+    size_t currentFrame = 0;
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
@@ -98,6 +120,8 @@ private:
 
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+    std::vector<VkCommandBuffer> commandBuffers;
     
 
     const std::vector<const char*> validationLayers = {
