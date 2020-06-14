@@ -20,6 +20,8 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
 VkShaderModule createShader(VkDevice GPU,const std::vector<char>& shaderBytecode);
 
+
+
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -81,11 +83,15 @@ private:
     void createCommandBuffers();
     void createSemaphores();
     void createSyncObjects();
+    void recreateSwapChain();
+    void cleanupSwapchain();
 
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     void drawFrame();
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> imagesInFlight;
     size_t currentFrame = 0;
+    bool framebufferResized = false;
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 

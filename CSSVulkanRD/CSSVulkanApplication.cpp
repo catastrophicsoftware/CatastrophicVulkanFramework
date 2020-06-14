@@ -16,6 +16,8 @@ void CatastrophicVulkanApplication::initWindow()
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WindowWidth, WindowHeight, "CSSoftware Vulkan R&D", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
 void CatastrophicVulkanApplication::initVulkan()
@@ -55,40 +57,39 @@ void CatastrophicVulkanApplication::cleanup()
         vkDestroyFence(GPU, inFlightFences[i], nullptr);
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroySemaphore(GPU, renderFinishedSemaphores[i], nullptr);
-        vkDestroySemaphore(GPU, imageAvailableSemaphores[i], nullptr);
-    }
-
+    vkFreeCommandBuffers(GPU, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
     vkDestroyCommandPool(GPU, commandPool, nullptr);
-    for (auto framebuffer : swapChainFramebuffers) {
-        vkDestroyFramebuffer(GPU, framebuffer, nullptr);
-    }
-
-
-    for (auto imageView : swapChainImageViews) {
-        vkDestroyImageView(GPU, imageView, nullptr);
-    }
 
 
     if (enableValidationLayers) {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
 
-    vkDestroyPipeline(GPU, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
-
-
-    vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
-    vkDestroyRenderPass(GPU, renderPass, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
-    vkDestroySwapchainKHR(GPU, swapChain, nullptr);
     vkDestroyDevice(GPU, nullptr);
     vkDestroyInstance(instance, nullptr);
 
     glfwDestroyWindow(window);
-
     glfwTerminate();
+}
+
+void CatastrophicVulkanApplication::cleanupSwapchain()
+{
+    for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+        vkDestroyFramebuffer(GPU, swapChainFramebuffers[i], nullptr);
+    }
+
+    vkFreeCommandBuffers(GPU, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+    vkDestroyPipeline(GPU, graphicsPipeline, nullptr);
+
+    vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
+    vkDestroyRenderPass(GPU, renderPass, nullptr);
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+        vkDestroyImageView(GPU, swapChainImageViews[i], nullptr);
+    }
+
+    vkDestroySwapchainKHR(GPU, swapChain, nullptr);
 }
 
 void CatastrophicVulkanApplication::createInstance()
@@ -572,13 +573,42 @@ void CatastrophicVulkanApplication::createSyncObjects()
     }
 }
 
+void CatastrophicVulkanApplication::recreateSwapChain()
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwWaitEvents();
+    }
+
+
+    vkDeviceWaitIdle(GPU);
+    cleanupSwapchain();
+
+    createSwapChain();
+    createImageViews();
+    createRenderPass();
+    createGraphicsPipeline();
+    createFramebuffers();
+    createCommandBuffers();
+}
+
 void CatastrophicVulkanApplication::drawFrame()
 {
     vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex;
 
-    vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+    if (res == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        recreateSwapChain();
+        return;
+    }
+    else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
+        throw std::runtime_error("failed to acquire swap chain image!");
 
     // Check if a previous frame is using this image (i.e. there is its fence to wait on)
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
@@ -622,6 +652,12 @@ void CatastrophicVulkanApplication::drawFrame()
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void CatastrophicVulkanApplication::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+    auto app = reinterpret_cast<CatastrophicVulkanApplication*>(glfwGetWindowUserPointer(window));
+    app->framebufferResized = true;
 }
 
 void CatastrophicVulkanApplication::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
@@ -830,7 +866,13 @@ VkExtent2D CatastrophicVulkanApplication::ChooseSwapExtent(const VkSurfaceCapabi
         return capabilities.currentExtent;
     }
     else {
-        VkExtent2D actualExtent = { WindowWidth, WindowHeight };
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+
+        VkExtent2D actualExtent = {
+            static_cast<uint32_t>(width),
+            static_cast<uint32_t>(height)
+        };
 
         actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
         actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
