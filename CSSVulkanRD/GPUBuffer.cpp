@@ -1,4 +1,5 @@
 #include "GPUBuffer.h"
+#include "GraphicsDevice.h"
 
 void GPUBuffer::Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode, bool gpuAllocate)
 {
@@ -45,6 +46,7 @@ void GPUBuffer::AllocateGPUMemory()
 		alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		alloc.memoryTypeIndex = pDevice->FindGPUMemory(memoryRequirements.memoryTypeBits,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		alloc.allocationSize = memoryRequirements.size;
 
 		VULKAN_CALL(vkAllocateMemory(GPU, &alloc, nullptr, &bufferGPUMemoryHandle));
 		vkBindBufferMemory(GPU, buffer, bufferGPUMemoryHandle, 0);
@@ -81,4 +83,9 @@ void GPUBuffer::Unmap()
 		vkUnmapMemory(GPU, bufferGPUMemoryHandle);
 		mapped = false;
 	}
+}
+
+VkBuffer GPUBuffer::GetBuffer() const
+{
+	return buffer;
 }

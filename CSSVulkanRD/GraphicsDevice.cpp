@@ -1,13 +1,25 @@
 #include "GraphicsDevice.h"
+#include "GPUBuffer.h"
 
-void GraphicsDevice::Run()
+GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
-    initWindow();
-    initVulkan();
-    mainLoop();
+    pApplicationWindow = pAppWindow;
+}
+
+GraphicsDevice::~GraphicsDevice()
+{
     cleanup();
 }
 
+//void GraphicsDevice::Run()
+//{
+//    initWindow();
+//    initVulkan();
+//    mainLoop();
+//    cleanup();
+//}
+
+/*
 void GraphicsDevice::initWindow()
 {
     glfwInit();
@@ -19,6 +31,7 @@ void GraphicsDevice::initWindow()
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
+*/
 
 void GraphicsDevice::initVulkan()
 {
@@ -34,13 +47,13 @@ void GraphicsDevice::initVulkan()
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPools();
-    createCommandBuffers();
     createSemaphores();
     createSyncObjects();
-
     getGPUMemoryProperties();
-}
 
+    createCommandBuffers();
+}
+/*
 void GraphicsDevice::mainLoop()
 {
     while (!glfwWindowShouldClose(window)) {
@@ -50,6 +63,7 @@ void GraphicsDevice::mainLoop()
 
     vkDeviceWaitIdle(GPU);
 }
+*/
 
 void GraphicsDevice::cleanup()
 {
@@ -62,7 +76,6 @@ void GraphicsDevice::cleanup()
     vkFreeCommandBuffers(GPU, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
     vkDestroyCommandPool(GPU, commandPool, nullptr);
 
-
     if (enableValidationLayers) {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
@@ -71,8 +84,8 @@ void GraphicsDevice::cleanup()
     vkDestroyDevice(GPU, nullptr);
     vkDestroyInstance(instance, nullptr);
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    //glfwDestroyWindow(window);
+    //glfwTerminate();
 }
 
 void GraphicsDevice::cleanupSwapchain()
@@ -279,7 +292,7 @@ void GraphicsDevice::createImageViews()
     }
 }
 
-void GraphicsDevice::createGraphicsPipeline()
+void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be removed
 {
     auto vsc = readFile("shaders\\vs.spv");
     auto psc = readFile("shaders\\ps.spv");
@@ -306,17 +319,22 @@ void GraphicsDevice::createGraphicsPipeline()
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 
+    auto bindingDesc = VertexPositionColor::GetBindingDescription();
+    auto attrDesc = VertexPositionColor::GetAttributeDescriptions();
+
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrDesc.size());
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
+    vertexInputInfo.pVertexAttributeDescriptions = attrDesc.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
+
+    //---
     VkViewport viewport{};
     viewport.x = 0;
     viewport.y = 0;
@@ -449,7 +467,6 @@ void GraphicsDevice::createRenderPass()
     {
         throw std::runtime_error("error creating render pass");
     }
-
 }
 
 void GraphicsDevice::createFramebuffers()
@@ -490,7 +507,7 @@ void GraphicsDevice::createCommandPools()
     }
 }
 
-void GraphicsDevice::createCommandBuffers()
+void GraphicsDevice::createCommandBuffers() //DEPRECATED DEMO CODE
 {
     commandBuffers.resize(swapChainFramebuffers.size());
 
@@ -504,7 +521,8 @@ void GraphicsDevice::createCommandBuffers()
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
-    for (size_t i = 0; i < commandBuffers.size(); i++) {
+    for (size_t i = 0; i < commandBuffers.size(); i++)
+    {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = 0; // Optional
@@ -521,15 +539,16 @@ void GraphicsDevice::createCommandBuffers()
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = swapChainExtent;
 
-        VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        VkClearValue clearColor = { 0.100f, 0.149f, 0.255f, 1.0f };
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        //-------------------
+        //All draw calls / resource binding for this render pass and graphics pipeline
+        //-------------------
 
         vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -583,9 +602,9 @@ void GraphicsDevice::createSyncObjects()
 void GraphicsDevice::recreateSwapChain()
 {
     int width = 0, height = 0;
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetFramebufferSize(pApplicationWindow, &width, &height);
     while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(window, &width, &height);
+        glfwGetFramebufferSize(pApplicationWindow, &width, &height);
         glfwWaitEvents();
     }
 
@@ -601,7 +620,7 @@ void GraphicsDevice::recreateSwapChain()
     createCommandBuffers();
 }
 
-void GraphicsDevice::drawFrame()
+void GraphicsDevice::DrawFrame()
 {
     vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -661,11 +680,11 @@ void GraphicsDevice::drawFrame()
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void GraphicsDevice::framebufferResizeCallback(GLFWwindow* window, int width, int height)
-{
-    auto app = reinterpret_cast<GraphicsDevice*>(glfwGetWindowUserPointer(window));
-    app->framebufferResized = true;
-}
+//void GraphicsDevice::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+//{
+//    auto app = reinterpret_cast<GraphicsDevice*>(glfwGetWindowUserPointer(window));
+//    app->framebufferResized = true;
+//}
 
 void GraphicsDevice::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
 {
@@ -729,9 +748,9 @@ bool GraphicsDevice::checkValidationLayerSupport()
     return true;
 }
 
-void GraphicsDevice::CreateSurface()
+void GraphicsDevice::CreateSurface() //possible weird shit
 {
-    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+    if (glfwCreateWindowSurface(instance, pApplicationWindow, nullptr, &surface) != VK_SUCCESS)
         throw std::runtime_error("Error creating window surface!");
 }
 
@@ -740,6 +759,16 @@ VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessage
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
     return VK_FALSE;
+}
+
+void GraphicsDevice::InitializeVulkan()
+{
+    initVulkan();
+}
+
+void GraphicsDevice::ShutdownVulkan()
+{
+    cleanup();
 }
 
 uint32_t GraphicsDevice::FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties)
@@ -763,6 +792,70 @@ VkDevice GraphicsDevice::GetGPU() const
 VkPhysicalDevice GraphicsDevice::GetPhysicalDevice() const
 {
     return physicalGPU;
+}
+
+void GraphicsDevice::ResizeFramebuffer()
+{
+    framebufferResized = true;
+}
+
+void GraphicsDevice::BeginRenderPass()
+{
+    commandBuffers.resize(swapChainFramebuffers.size());
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+
+    if (vkAllocateCommandBuffers(GPU, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate command buffers!");
+    }
+
+    for (size_t i = 0; i < commandBuffers.size(); i++)
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+
+        if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+            throw std::runtime_error("failed to begin recording command buffer!");
+        }
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = swapChainFramebuffers[i];
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = swapChainExtent;
+
+        VkClearValue clearColor = { 0.100f, 0.149f, 0.255f, 1.0f };
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    }
+}
+
+void GraphicsDevice::EndRenderPass()
+{
+    for (size_t i = 0; i < commandBuffers.size(); i++)
+    {
+        vkCmdEndRenderPass(commandBuffers[i]);
+
+        if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+    }
+}
+
+void GraphicsDevice::WaitForGPUIdle()
+{
+    vkDeviceWaitIdle(GPU);
 }
 
 QueueFamilyIndices GraphicsDevice::FindQueueFamilies(VkPhysicalDevice physicalGPU)
@@ -897,7 +990,7 @@ VkExtent2D GraphicsDevice::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capa
     }
     else {
         int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
+        glfwGetFramebufferSize(pApplicationWindow, &width, &height);
 
         VkExtent2D actualExtent = {
             static_cast<uint32_t>(width),
@@ -972,4 +1065,35 @@ VkShaderModule createShader(VkDevice GPU, const std::vector<char>& shaderBytecod
         throw std::runtime_error("failed to create shader");
     }
     return shaderModule;
+}
+
+std::array<VkVertexInputAttributeDescription, 2> VertexPositionColor::GetAttributeDescriptions()
+{
+    std::array<VkVertexInputAttributeDescription, 2> attrDescriptions;
+    attrDescriptions[0].binding = 0;
+    attrDescriptions[0].location = 0;
+    attrDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    attrDescriptions[0].offset = offsetof(VertexPositionColor, position);
+
+    attrDescriptions[1].binding = 0;
+    attrDescriptions[1].location = 1;
+    attrDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attrDescriptions[1].offset = offsetof(VertexPositionColor, color);
+
+    return attrDescriptions;
+}
+
+VkVertexInputBindingDescription VertexPositionColor::GetBindingDescription()
+{
+    VkVertexInputBindingDescription bindDesc{};
+    bindDesc.binding = 0;
+    bindDesc.stride = sizeof(VertexPositionColor);
+    bindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    return bindDesc;
+}
+
+bool QueueFamilyIndices::isComplete()
+{
+    return graphicsFamily.has_value() && presentFamily.has_value();
 }

@@ -13,7 +13,9 @@
 #include <math.h>
 #include <algorithm>
 #include <fstream>
+#include <glm/glm.hpp>
+#include <array>
 
-#include "GraphicsDevice.h"
 
+typedef uint32_t uint32;
 #define VULKAN_CALL(x) if (x != VK_SUCCESS) {throw std::runtime_error("Vulkan API Call Failed!");}

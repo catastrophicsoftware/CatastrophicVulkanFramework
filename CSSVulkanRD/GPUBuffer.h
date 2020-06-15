@@ -1,6 +1,8 @@
 #pragma once
 #include "includes.h"
 
+class GraphicsDevice;
+
 class GPUBuffer
 {
 public:
@@ -16,6 +18,8 @@ public:
 
 	void* Map();
 	void Unmap();
+
+	VkBuffer GetBuffer() const;
 private:
 	VkBuffer             buffer;
 	VkBufferCreateInfo   bufferDescription;

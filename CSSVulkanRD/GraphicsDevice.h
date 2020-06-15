@@ -8,15 +8,21 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
 VkShaderModule createShader(VkDevice GPU,const std::vector<char>& shaderBytecode);
 
+struct VertexPositionColor
+{
+    glm::vec2 position;
+    glm::vec3 color;
+
+    static VkVertexInputBindingDescription GetBindingDescription();
+    static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
+};
 
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
 
-    bool isComplete() {
-        return graphicsFamily.has_value() && presentFamily.has_value();
-    }
+    bool isComplete();
 };
 
 struct SwapChainSupportDetails {
@@ -25,16 +31,29 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-class GraphicsDevice{
-public:
-    void Run();
 
+class GraphicsDevice
+{
+public:
+    GraphicsDevice(GLFWwindow* pAppWindow);
+    ~GraphicsDevice();
+
+    void InitializeVulkan();
+    void ShutdownVulkan();
 
     uint32_t FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties);
     VkDevice GetGPU() const;
     VkPhysicalDevice GetPhysicalDevice() const;
+
+    void ResizeFramebuffer();
+
+    void BeginRenderPass();
+    void EndRenderPass();
+
+    void WaitForGPUIdle();
+    void DrawFrame();
 private:
-    GLFWwindow * window;
+    GLFWwindow* pApplicationWindow;
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -56,10 +75,9 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
 
-    void initWindow();
+    //void initWindow();
     void initVulkan();
-    void mainLoop();
-
+    //void mainLoop();
 
     void cleanup();
     void createInstance();
@@ -77,8 +95,8 @@ private:
     void cleanupSwapchain();
     void getGPUMemoryProperties();
 
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
-    void drawFrame();
+    //static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+    
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> imagesInFlight;
     size_t currentFrame = 0;
@@ -101,9 +119,6 @@ private:
 #else
     const bool enableValidationLayers = true;
 #endif
-
-    uint32_t WindowWidth = 1280;
-    uint32_t WindowHeight = 1024;
 
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
 

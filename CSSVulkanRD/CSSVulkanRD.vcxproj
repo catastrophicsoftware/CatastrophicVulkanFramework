@@ -146,11 +146,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CatastrophicVulkanFramework.cpp" />
     <ClCompile Include="GraphicsDevice.cpp" />
     <ClCompile Include="GPUBuffer.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CatastrophicVulkanFramework.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="GPUBuffer.h" />
     <ClInclude Include="includes.h" />

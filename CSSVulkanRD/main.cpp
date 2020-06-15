@@ -1,15 +1,27 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include "GraphicsDevice.h"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 #include <cstring>
 #include <cstdlib>
 
+#include "CatastrophicVulkanFramework.h"
+
+class app : public CatastrophicVulkanFrameworkApplication
+{
+public:
+    virtual void Initialize() {}
+    virtual void Update() {}
+    virtual void Render() {}
+    virtual void DestroyResources() {}
+};
+
 
 int main() {
-    GraphicsDevice* pApp = new GraphicsDevice();
+    //GraphicsDevice* pApp = new GraphicsDevice();
+
+    app* pApp = new app();
 
     try {
         pApp->Run();
@@ -21,4 +33,3 @@ int main() {
 
     return EXIT_SUCCESS;
 }
-
