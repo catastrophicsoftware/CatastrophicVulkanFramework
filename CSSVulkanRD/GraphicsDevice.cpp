@@ -1,6 +1,6 @@
-#include "CSSVulkanApplication.h"
+#include "GraphicsDevice.h"
 
-void CatastrophicVulkanApplication::Run()
+void GraphicsDevice::Run()
 {
     initWindow();
     initVulkan();
@@ -8,7 +8,7 @@ void CatastrophicVulkanApplication::Run()
     cleanup();
 }
 
-void CatastrophicVulkanApplication::initWindow()
+void GraphicsDevice::initWindow()
 {
     glfwInit();
 
@@ -20,7 +20,7 @@ void CatastrophicVulkanApplication::initWindow()
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
-void CatastrophicVulkanApplication::initVulkan()
+void GraphicsDevice::initVulkan()
 {
     createInstance();
     setupDebugMessenger();
@@ -37,9 +37,11 @@ void CatastrophicVulkanApplication::initVulkan()
     createCommandBuffers();
     createSemaphores();
     createSyncObjects();
+
+    getGPUMemoryProperties();
 }
 
-void CatastrophicVulkanApplication::mainLoop()
+void GraphicsDevice::mainLoop()
 {
     while (!glfwWindowShouldClose(window)) {
         glfwWaitEvents();
@@ -49,7 +51,7 @@ void CatastrophicVulkanApplication::mainLoop()
     vkDeviceWaitIdle(GPU);
 }
 
-void CatastrophicVulkanApplication::cleanup()
+void GraphicsDevice::cleanup()
 {
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(GPU, renderFinishedSemaphores[i], nullptr);
@@ -73,7 +75,7 @@ void CatastrophicVulkanApplication::cleanup()
     glfwTerminate();
 }
 
-void CatastrophicVulkanApplication::cleanupSwapchain()
+void GraphicsDevice::cleanupSwapchain()
 {
     for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
         vkDestroyFramebuffer(GPU, swapChainFramebuffers[i], nullptr);
@@ -92,7 +94,12 @@ void CatastrophicVulkanApplication::cleanupSwapchain()
     vkDestroySwapchainKHR(GPU, swapChain, nullptr);
 }
 
-void CatastrophicVulkanApplication::createInstance()
+void GraphicsDevice::getGPUMemoryProperties()
+{
+    vkGetPhysicalDeviceMemoryProperties(physicalGPU, &gpuMemoryProperties);
+}
+
+void GraphicsDevice::createInstance()
 {
     if (enableValidationLayers && !checkValidationLayerSupport()) {
         throw std::runtime_error("validation layers requested, but not available!");
@@ -133,7 +140,7 @@ void CatastrophicVulkanApplication::createInstance()
     }
 }
 
-void CatastrophicVulkanApplication::createLogicalDevice()
+void GraphicsDevice::createLogicalDevice()
 {
     QueueFamilyIndices indices = FindQueueFamilies(physicalGPU);
     VkDeviceQueueCreateInfo queueCreateInfo{};
@@ -185,7 +192,7 @@ void CatastrophicVulkanApplication::createLogicalDevice()
     vkGetDeviceQueue(GPU, indices.presentFamily.value(), 0, &presentQueue);
 }
 
-void CatastrophicVulkanApplication::createSwapChain()
+void GraphicsDevice::createSwapChain()
 {
     SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(physicalGPU);
 
@@ -243,7 +250,7 @@ void CatastrophicVulkanApplication::createSwapChain()
     swapChainExtent = extent;
 }
 
-void CatastrophicVulkanApplication::createImageViews()
+void GraphicsDevice::createImageViews()
 {
     swapChainImageViews.resize(swapChainImages.size());
 
@@ -272,7 +279,7 @@ void CatastrophicVulkanApplication::createImageViews()
     }
 }
 
-void CatastrophicVulkanApplication::createGraphicsPipeline()
+void GraphicsDevice::createGraphicsPipeline()
 {
     auto vsc = readFile("shaders\\vs.spv");
     auto psc = readFile("shaders\\ps.spv");
@@ -398,7 +405,7 @@ void CatastrophicVulkanApplication::createGraphicsPipeline()
     }
 }
 
-void CatastrophicVulkanApplication::createRenderPass()
+void GraphicsDevice::createRenderPass()
 {
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapChainImageFormat;
@@ -445,7 +452,7 @@ void CatastrophicVulkanApplication::createRenderPass()
 
 }
 
-void CatastrophicVulkanApplication::createFramebuffers()
+void GraphicsDevice::createFramebuffers()
 {
     swapChainFramebuffers.resize(swapChainImages.size());
 
@@ -469,7 +476,7 @@ void CatastrophicVulkanApplication::createFramebuffers()
     }
 }
 
-void CatastrophicVulkanApplication::createCommandPools()
+void GraphicsDevice::createCommandPools()
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalGPU);
 
@@ -483,7 +490,7 @@ void CatastrophicVulkanApplication::createCommandPools()
     }
 }
 
-void CatastrophicVulkanApplication::createCommandBuffers()
+void GraphicsDevice::createCommandBuffers()
 {
     commandBuffers.resize(swapChainFramebuffers.size());
 
@@ -532,7 +539,7 @@ void CatastrophicVulkanApplication::createCommandBuffers()
     }
 }
 
-void CatastrophicVulkanApplication::createSemaphores()
+void GraphicsDevice::createSemaphores()
 {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -549,7 +556,7 @@ void CatastrophicVulkanApplication::createSemaphores()
     }
 }
 
-void CatastrophicVulkanApplication::createSyncObjects()
+void GraphicsDevice::createSyncObjects()
 {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -573,7 +580,7 @@ void CatastrophicVulkanApplication::createSyncObjects()
     }
 }
 
-void CatastrophicVulkanApplication::recreateSwapChain()
+void GraphicsDevice::recreateSwapChain()
 {
     int width = 0, height = 0;
     glfwGetFramebufferSize(window, &width, &height);
@@ -594,7 +601,7 @@ void CatastrophicVulkanApplication::recreateSwapChain()
     createCommandBuffers();
 }
 
-void CatastrophicVulkanApplication::drawFrame()
+void GraphicsDevice::drawFrame()
 {
     vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -654,13 +661,13 @@ void CatastrophicVulkanApplication::drawFrame()
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void CatastrophicVulkanApplication::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+void GraphicsDevice::framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
-    auto app = reinterpret_cast<CatastrophicVulkanApplication*>(glfwGetWindowUserPointer(window));
+    auto app = reinterpret_cast<GraphicsDevice*>(glfwGetWindowUserPointer(window));
     app->framebufferResized = true;
 }
 
-void CatastrophicVulkanApplication::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
+void GraphicsDevice::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
 {
     createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -669,7 +676,7 @@ void CatastrophicVulkanApplication::populateDebugMessengerCreateInfo(VkDebugUtil
     createInfo.pfnUserCallback = debugCallback;
 }
 
-void CatastrophicVulkanApplication::setupDebugMessenger()
+void GraphicsDevice::setupDebugMessenger()
 {
     if (!enableValidationLayers) return;
 
@@ -681,7 +688,7 @@ void CatastrophicVulkanApplication::setupDebugMessenger()
     }
 }
 
-std::vector<const char*> CatastrophicVulkanApplication::getRequiredExtensions()
+std::vector<const char*> GraphicsDevice::getRequiredExtensions()
 {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
@@ -696,7 +703,7 @@ std::vector<const char*> CatastrophicVulkanApplication::getRequiredExtensions()
     return extensions;
 }
 
-bool CatastrophicVulkanApplication::checkValidationLayerSupport()
+bool GraphicsDevice::checkValidationLayerSupport()
 {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -722,20 +729,43 @@ bool CatastrophicVulkanApplication::checkValidationLayerSupport()
     return true;
 }
 
-void CatastrophicVulkanApplication::CreateSurface()
+void GraphicsDevice::CreateSurface()
 {
     if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
         throw std::runtime_error("Error creating window surface!");
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL CatastrophicVulkanApplication::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
     return VK_FALSE;
 }
 
-QueueFamilyIndices CatastrophicVulkanApplication::FindQueueFamilies(VkPhysicalDevice physicalGPU)
+uint32_t GraphicsDevice::FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties)
+{
+    for (uint32_t i = 0; i < gpuMemoryProperties.memoryTypeCount; i++)
+    {
+        if ((typeFilter & (1 << i)) && (gpuMemoryProperties.memoryTypes[i].propertyFlags & memProperties) == memProperties)
+        {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("failed to find suitable GPU memory type!");
+}
+
+VkDevice GraphicsDevice::GetGPU() const
+{
+    return GPU;
+}
+
+VkPhysicalDevice GraphicsDevice::GetPhysicalDevice() const
+{
+    return physicalGPU;
+}
+
+QueueFamilyIndices GraphicsDevice::FindQueueFamilies(VkPhysicalDevice physicalGPU)
 {
     QueueFamilyIndices indices;
 
@@ -768,7 +798,7 @@ QueueFamilyIndices CatastrophicVulkanApplication::FindQueueFamilies(VkPhysicalDe
     return indices;
 }
 
-bool CatastrophicVulkanApplication::IsDeviceSuitable(VkPhysicalDevice physicalGPU)
+bool GraphicsDevice::IsDeviceSuitable(VkPhysicalDevice physicalGPU)
 {
     QueueFamilyIndices indices = FindQueueFamilies(physicalGPU);
 
@@ -783,7 +813,7 @@ bool CatastrophicVulkanApplication::IsDeviceSuitable(VkPhysicalDevice physicalGP
     return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
-bool CatastrophicVulkanApplication::CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU)
+bool GraphicsDevice::CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU)
 {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(physicalGPU, nullptr, &extensionCount, nullptr);
@@ -800,7 +830,7 @@ bool CatastrophicVulkanApplication::CheckDeviceExtensionSupport(VkPhysicalDevice
     return requiredExtensions.empty();
 }
 
-void CatastrophicVulkanApplication::PickPhysicalGPU()
+void GraphicsDevice::PickPhysicalGPU()
 {
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -824,7 +854,7 @@ void CatastrophicVulkanApplication::PickPhysicalGPU()
     }
 }
 
-SwapChainSupportDetails CatastrophicVulkanApplication::QuerySwapChainSupport(VkPhysicalDevice physicalGPU)
+SwapChainSupportDetails GraphicsDevice::QuerySwapChainSupport(VkPhysicalDevice physicalGPU)
 {
     SwapChainSupportDetails swapDetails;
 
@@ -849,7 +879,7 @@ SwapChainSupportDetails CatastrophicVulkanApplication::QuerySwapChainSupport(VkP
     return swapDetails;
 }
 
-VkSurfaceFormatKHR CatastrophicVulkanApplication::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR GraphicsDevice::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
     for (const auto& availableFormat : availableFormats)
     {
@@ -860,7 +890,7 @@ VkSurfaceFormatKHR CatastrophicVulkanApplication::ChooseSwapSurfaceFormat(const 
     }
 }
 
-VkExtent2D CatastrophicVulkanApplication::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D GraphicsDevice::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 {
     if (capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent;
@@ -881,7 +911,7 @@ VkExtent2D CatastrophicVulkanApplication::ChooseSwapExtent(const VkSurfaceCapabi
     }
 }
 
-VkPresentModeKHR CatastrophicVulkanApplication::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+VkPresentModeKHR GraphicsDevice::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
     for (const auto& availablePresentMode : availablePresentModes) {
         if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {

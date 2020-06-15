@@ -1,17 +1,5 @@
 #pragma once
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
-#include <iostream>
-#include <stdexcept>
-#include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <optional>
-#include <set>
-#include <math.h>
-#include <algorithm>
-#include <fstream>
+#include "includes.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -19,7 +7,6 @@ static std::vector<char> readFile(const std::string& filename);
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
 VkShaderModule createShader(VkDevice GPU,const std::vector<char>& shaderBytecode);
-
 
 
 struct QueueFamilyIndices
@@ -38,16 +25,21 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-class CatastrophicVulkanApplication{
+class GraphicsDevice{
 public:
     void Run();
 
+
+    uint32_t FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties);
+    VkDevice GetGPU() const;
+    VkPhysicalDevice GetPhysicalDevice() const;
 private:
     GLFWwindow * window;
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
     VkPhysicalDevice physicalGPU = VK_NULL_HANDLE;
+    VkPhysicalDeviceMemoryProperties gpuMemoryProperties;
     VkDevice GPU;
     VkQueue GraphicsQueue;
     VkSurfaceKHR surface;
@@ -58,8 +50,6 @@ private:
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;
 
-    //VkSemaphore imageAvailableSemaphore;
-    //VkSemaphore renderFinishedSemaphore;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
 
@@ -85,6 +75,7 @@ private:
     void createSyncObjects();
     void recreateSwapChain();
     void cleanupSwapchain();
+    void getGPUMemoryProperties();
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     void drawFrame();

@@ -1,6 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include "CSSVulkanApplication.h"
+#include "GraphicsDevice.h"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -9,7 +9,7 @@
 
 
 int main() {
-    CatastrophicVulkanApplication* pApp = new CatastrophicVulkanApplication();
+    GraphicsDevice* pApp = new GraphicsDevice();
 
     try {
         pApp->Run();
