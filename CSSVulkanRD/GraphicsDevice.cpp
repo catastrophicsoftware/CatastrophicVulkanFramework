@@ -853,18 +853,6 @@ void GraphicsDevice::BeginRenderPass()
 
 void GraphicsDevice::EndRenderPass()
 {
-    /*
-    for (size_t i = 0; i < commandBuffers.size(); i++)
-    {
-        vkCmdEndRenderPass(commandBuffers[i]);
-
-        if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to record command buffer!");
-        }
-    }
-    */
-
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
     VULKAN_CALL(vkEndCommandBuffer(commandBuffers[imageIndex]));
 }
