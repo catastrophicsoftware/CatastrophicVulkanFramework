@@ -1034,7 +1034,9 @@ InflightFrame* GraphicsDevice::GetAvailableCommandBuffer()
             }
         }
         //no command buffers are available
-        return CreateInflightFrame();
+        InflightFrame* NewFrame = CreateInflightFrame();
+        inflightFrames.push_back(NewFrame);
+        return NewFrame;
     }
 }
 
