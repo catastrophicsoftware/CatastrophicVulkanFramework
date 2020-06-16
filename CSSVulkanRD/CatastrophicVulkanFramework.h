@@ -25,4 +25,5 @@ private:
 	static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 	void InitializeApplicationWindow(uint32 width, uint32 height);
 	void InitializeGraphicsSubsystem();
+	void InitializeFramebufferResizeHooks();
 };

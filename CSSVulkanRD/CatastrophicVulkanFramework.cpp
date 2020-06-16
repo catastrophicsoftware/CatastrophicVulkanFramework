@@ -1,10 +1,13 @@
 #include "CatastrophicVulkanFramework.h"
 #include "GraphicsDevice.h"
+#include <windows.h>
+#include "GPUBuffer.h"
 
 void CatastrophicVulkanFrameworkApplication::Run()
 {
 	InitializeApplicationWindow(800, 600);
 	InitializeGraphicsSubsystem();
+	InitializeFramebufferResizeHooks();
 
 	MainLoop();
 
@@ -20,17 +23,40 @@ void CatastrophicVulkanFrameworkApplication::Shutdown()
 
 void CatastrophicVulkanFrameworkApplication::MainLoop()
 {
+	//temp
+	GPUBuffer* VertexBuffer = new GPUBuffer(pGraphics);
+
+	const std::vector<VertexPositionColor> vertices = {
+		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	};
+
+	VertexBuffer->Create(sizeof(vertices[0]) * vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_SHARING_MODE_EXCLUSIVE);
+
+	VertexBuffer->FillBuffer((void*)vertices.data());
+
 	while (!glfwWindowShouldClose(ApplicationWindow))
 	{
 		glfwPollEvents();
 
 		pGraphics->PrepareFrame();
 		pGraphics->BeginRenderPass();
+		VkCommandBuffer activeCMDBuffer = pGraphics->GetActiveCommandBuffer();
 		//all resource / buffer / view / whatever binding for rendered objects using current graphics
 		//pipeline state
-		pGraphics->EndRenderPass(); //begin and end pass is the process of recording command buffers
+
+		VkDeviceSize offsets[] = { 0 };
+		VkBuffer binding[] = { VertexBuffer->GetBuffer() };
+		vkCmdBindVertexBuffers(activeCMDBuffer, 0, 1,binding, offsets);
+		vkCmdDraw(activeCMDBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+		pGraphics->EndRenderPass(); //begin and end pass is the process of recording command buffer
 
 		pGraphics->DrawFrame(); //submits, executes command buffers and displays frame
+
+		Sleep(13);
 	}
 
 	pGraphics->WaitForGPUIdle();
@@ -59,4 +85,9 @@ void CatastrophicVulkanFrameworkApplication::InitializeGraphicsSubsystem()
 {
 	pGraphics = new GraphicsDevice(ApplicationWindow);
 	pGraphics->InitializeVulkan();
+}
+
+void CatastrophicVulkanFrameworkApplication::InitializeFramebufferResizeHooks()
+{
+	glfwSetWindowUserPointer(ApplicationWindow, pGraphics);
 }

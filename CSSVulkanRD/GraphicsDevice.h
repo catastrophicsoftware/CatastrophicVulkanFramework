@@ -64,6 +64,8 @@ public:
     //
     Shader* pShader;
     //
+
+    VkCommandBuffer GetActiveCommandBuffer() const; //this could be a bad idea.
 private:
     GLFWwindow* pApplicationWindow;
 
@@ -83,8 +85,8 @@ private:
     VkQueue GraphicsQueue;
     VkCommandPool commandPool;
 
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
+    //std::vector<VkSemaphore> imageAvailableSemaphores;
+    //std::vector<VkSemaphore> renderFinishedSemaphores;
 
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
@@ -100,9 +102,9 @@ private:
     void createRenderPass();
     void createFramebuffers();
     void createCommandPools();
-    void createCommandBuffers();
-    void createSemaphores();
-    void createSyncObjects();
+    //void createCommandBuffers();
+    //void createSemaphores();
+    //void createSyncObjects();
     void recreateSwapChain();
     void cleanupSwapchain();
     void getGPUMemoryProperties();
@@ -134,18 +136,18 @@ private:
     bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU);
     void PickPhysicalGPU();
     SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice physicalGPU);
-    VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-    VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-    VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    VkSurfaceFormatKHR      ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    VkPresentModeKHR        ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    VkExtent2D              ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
     std::vector<VkImage>         swapChainImages;
     std::vector<VkImageView>     swapChainImageViews;
     std::vector<VkFramebuffer>   swapChainFramebuffers;
 
-    std::vector<VkCommandBuffer> commandBuffers;
+    //std::vector<VkCommandBuffer> commandBuffers;
 
-    std::vector<VkFence> inFlightFences;
-    std::vector<VkFence> imagesInFlight;
+    //std::vector<VkFence> inFlightFences;
+    //std::vector<VkFence> imagesInFlight;
     //----
 
     uint32_t imageIndex = 0;
