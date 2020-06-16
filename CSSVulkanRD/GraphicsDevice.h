@@ -3,7 +3,6 @@
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-static std::vector<char> readFile(const std::string& filename);
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
 VkShaderModule createShader(VkDevice GPU,const std::vector<char>& shaderBytecode);
@@ -31,7 +30,7 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-
+class Shader;
 class GraphicsDevice
 {
 public:
@@ -52,6 +51,11 @@ public:
 
     void WaitForGPUIdle();
     void DrawFrame();
+
+
+    //
+    Shader* pShader;
+    //
 private:
     GLFWwindow* pApplicationWindow;
 
@@ -75,9 +79,7 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
 
-    //void initWindow();
     void initVulkan();
-    //void mainLoop();
 
     void cleanup();
     void createInstance();
@@ -94,26 +96,21 @@ private:
     void recreateSwapChain();
     void cleanupSwapchain();
     void getGPUMemoryProperties();
-
-    //static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+    void allocateCommandBuffers();
     
-    std::vector<VkFence> inFlightFences;
-    std::vector<VkFence> imagesInFlight;
     size_t currentFrame = 0;
     bool framebufferResized = false;
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-
     void setupDebugMessenger();
 
     std::vector<const char*> getRequiredExtensions();
-
-    bool checkValidationLayerSupport();
 
     void CreateSurface();
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
+    bool checkValidationLayerSupport();
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -130,10 +127,13 @@ private:
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
+    std::vector<VkImage>         swapChainImages;
+    std::vector<VkImageView>     swapChainImageViews;
+    std::vector<VkFramebuffer>   swapChainFramebuffers;
     std::vector<VkCommandBuffer> commandBuffers;
+
+    std::vector<VkFence> inFlightFences;
+    std::vector<VkFence> imagesInFlight;
     
 
     const std::vector<const char*> validationLayers = {

@@ -22,7 +22,7 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 {
 	while (!glfwWindowShouldClose(ApplicationWindow))
 	{
-		glfwWaitEvents();
+		glfwPollEvents();
 
 		pGraphics->BeginRenderPass();
 		//all resource / buffer / view / whatever binding for rendered objects using current graphics

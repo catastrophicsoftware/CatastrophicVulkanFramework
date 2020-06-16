@@ -1,5 +1,6 @@
 #include "GraphicsDevice.h"
 #include "GPUBuffer.h"
+#include "Shader.h"
 
 GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
@@ -73,7 +74,8 @@ void GraphicsDevice::cleanup()
         vkDestroyFence(GPU, inFlightFences[i], nullptr);
     }
 
-    vkFreeCommandBuffers(GPU, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+    pShader->DestroyShader();
+    cleanupSwapchain();
     vkDestroyCommandPool(GPU, commandPool, nullptr);
 
     if (enableValidationLayers) {
@@ -83,9 +85,6 @@ void GraphicsDevice::cleanup()
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyDevice(GPU, nullptr);
     vkDestroyInstance(instance, nullptr);
-
-    //glfwDestroyWindow(window);
-    //glfwTerminate();
 }
 
 void GraphicsDevice::cleanupSwapchain()
@@ -294,26 +293,30 @@ void GraphicsDevice::createImageViews()
 
 void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be removed
 {
-    auto vsc = readFile("shaders\\vs.spv");
-    auto psc = readFile("shaders\\ps.spv");
+    //auto vsc = readFile("shaders\\vs.spv");
+    //auto psc = readFile("shaders\\ps.spv");
 
-    if (vsc.size() == 0 || psc.size() == 0)
-        throw std::runtime_error("Error loading pixel or vertex shader");
+    //if (vsc.size() == 0 || psc.size() == 0)
+    //    throw std::runtime_error("Error loading pixel or vertex shader");
 
-    VkShaderModule vertexShader = createShader(GPU, vsc);
-    VkShaderModule pixelShader = createShader(GPU, psc);
+    //VkShaderModule vertexShader = createShader(GPU, vsc);
+    //VkShaderModule pixelShader = createShader(GPU, psc);
+
+    pShader = new Shader(GPU);
+    pShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
+    pShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     VkPipelineShaderStageCreateInfo vertexStageInfo{};
     vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertexStageInfo.pName = "main";
-    vertexStageInfo.module = vertexShader;
+    vertexStageInfo.pName = pShader->GetShader(VK_SHADER_STAGE_VERTEX_BIT)->entrypoint;
+    vertexStageInfo.module = pShader->GetShader(VK_SHADER_STAGE_VERTEX_BIT)->module;
 
     VkPipelineShaderStageCreateInfo pixelStageInfo{};
     pixelStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     pixelStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    pixelStageInfo.pName = "main";
-    pixelStageInfo.module = pixelShader;
+    pixelStageInfo.pName = pShader->GetShader(VK_SHADER_STAGE_FRAGMENT_BIT)->entrypoint;
+    pixelStageInfo.module = pShader->GetShader(VK_SHADER_STAGE_FRAGMENT_BIT)->module;
 
     VkPipelineShaderStageCreateInfo shaderStages[] = { vertexStageInfo, pixelStageInfo };
 
@@ -799,6 +802,11 @@ void GraphicsDevice::ResizeFramebuffer()
     framebufferResized = true;
 }
 
+void GraphicsDevice::allocateCommandBuffers()
+{
+
+}
+
 void GraphicsDevice::BeginRenderPass()
 {
     commandBuffers.resize(swapChainFramebuffers.size());
@@ -1013,23 +1021,6 @@ VkPresentModeKHR GraphicsDevice::ChooseSwapPresentMode(const std::vector<VkPrese
     }
 
     return VK_PRESENT_MODE_FIFO_KHR;
-}
-
-std::vector<char> readFile(const std::string& filename)
-{
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
-    }
-
-    size_t fileSize = (size_t)file.tellg();
-    std::vector<char> buffer(fileSize);
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-
-    return buffer;
 }
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
