@@ -24,6 +24,7 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	{
 		glfwPollEvents();
 
+		pGraphics->PrepareFrame();
 		pGraphics->BeginRenderPass();
 		//all resource / buffer / view / whatever binding for rendered objects using current graphics
 		//pipeline state

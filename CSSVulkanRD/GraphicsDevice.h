@@ -51,6 +51,7 @@ public:
 
     void WaitForGPUIdle();
     void DrawFrame();
+    void PrepareFrame();
 
 
     //
@@ -97,6 +98,7 @@ private:
     void cleanupSwapchain();
     void getGPUMemoryProperties();
     void allocateCommandBuffers();
+
     
     size_t currentFrame = 0;
     bool framebufferResized = false;
@@ -130,8 +132,11 @@ private:
     std::vector<VkImage>         swapChainImages;
     std::vector<VkImageView>     swapChainImageViews;
     std::vector<VkFramebuffer>   swapChainFramebuffers;
+
     std::vector<VkCommandBuffer> commandBuffers;
 
+    uint32_t imageIndex;
+    VkFence commandBufferFence;
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> imagesInFlight;
     
