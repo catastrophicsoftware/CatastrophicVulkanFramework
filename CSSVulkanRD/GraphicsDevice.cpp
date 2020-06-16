@@ -627,45 +627,37 @@ void GraphicsDevice::recreateSwapChain()
 
 void GraphicsDevice::DrawFrame()
 {
-    //vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
-    //VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-
-
-    //if (res == VK_ERROR_OUT_OF_DATE_KHR)
-    //{
-    //    recreateSwapChain();
-    //    return;
+    //// Check if a previous frame is using this image (i.e. there is its fence to wait on)
+    //if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+    //    vkWaitForFences(GPU, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     //}
-    //else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
-    //    throw std::runtime_error("failed to acquire swap chain image!");
-
-    // Check if a previous frame is using this image (i.e. there is its fence to wait on)
-    if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(GPU, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-    }
-    // Mark the image as now being in use by this frame
-    imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+    //// Mark the image as now being in use by this frame
+    //imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+    //VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+    VkSemaphore waitSemaphores[] = { pActiveCommandBuffer->imageAvailable };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+    //submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+    submitInfo.pCommandBuffers = &pActiveCommandBuffer->cmdBuffer;
+    //VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+    VkSemaphore signalSemaphores[] = { pActiveCommandBuffer->renderFinished };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
     
-    vkResetFences(GPU, 1, &inFlightFences[currentFrame]);
-    if (vkQueueSubmit(GraphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-        throw std::runtime_error("failed to submit draw command buffer!");
-    }
+    //vkResetFences(GPU, 1, &inFlightFences[currentFrame]);
+    //if (vkQueueSubmit(GraphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+    //    throw std::runtime_error("failed to submit draw command buffer!");
+    //}
+
+    vkResetFences(GPU, 1, &pActiveCommandBuffer->cmdFence);
+    vkQueueSubmit(GraphicsQueue, 1, &submitInfo, pActiveCommandBuffer->cmdFence);
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -676,7 +668,7 @@ void GraphicsDevice::DrawFrame()
     VkSwapchainKHR swapChains[] = { swapChain };
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pImageIndices = &imageIndex; //possible issue 6-16
 
     presentInfo.pResults = nullptr; // Optional
 
@@ -819,9 +811,16 @@ void GraphicsDevice::allocateCommandBuffers()
 
 void GraphicsDevice::PrepareFrame()
 {
-    vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    //vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    //vkWaitForFences(GPU, 1, &pActiveCommandBuffer->cmdFence, VK_TRUE, UINT64_MAX);
 
-    VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    //VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    //VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveCommandBuffer->cmdSemaphore, VK_NULL_HANDLE, &imageIndex);
+    
+    pActiveCommandBuffer = GetAvailableCommandBuffer();
+    VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveCommandBuffer->imageAvailable, VK_NULL_HANDLE, &imageIndex);
+
+    int i = 1;
 }
 
 void GraphicsDevice::BeginRenderPass()
@@ -831,14 +830,16 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
+
+    /*if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
         throw std::runtime_error("failed to begin recording command buffer!");
-    }
+    }*/
+
+    VULKAN_CALL(vkBeginCommandBuffer(pActiveCommandBuffer->cmdBuffer, &beginInfo));
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = renderPass;
-    //renderPassInfo.framebuffer = swapChainFramebuffers[i];
     renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = swapChainExtent;
@@ -847,14 +848,20 @@ void GraphicsDevice::BeginRenderPass()
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
 
-    vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    //vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    //vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    vkCmdBeginRenderPass(pActiveCommandBuffer->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(pActiveCommandBuffer->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 }
 
 void GraphicsDevice::EndRenderPass()
 {
-    vkCmdEndRenderPass(commandBuffers[imageIndex]);
-    VULKAN_CALL(vkEndCommandBuffer(commandBuffers[imageIndex]));
+    //vkCmdEndRenderPass(commandBuffers[imageIndex]);
+    //VULKAN_CALL(vkEndCommandBuffer(commandBuffers[imageIndex]));
+
+    vkCmdEndRenderPass(pActiveCommandBuffer->cmdBuffer);
+    VULKAN_CALL(vkEndCommandBuffer(pActiveCommandBuffer->cmdBuffer));
 }
 
 void GraphicsDevice::WaitForGPUIdle()
@@ -1008,6 +1015,55 @@ VkExtent2D GraphicsDevice::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capa
     }
 }
 
+InflightFrame* GraphicsDevice::GetAvailableCommandBuffer()
+{
+    if (inflightFrames.size() == 0)
+    {
+        InflightFrame* NewFrame = CreateInflightFrame();
+        inflightFrames.push_back(NewFrame);
+        return NewFrame;
+    }
+    else
+    {
+        for (int i = 0; i < inflightFrames.size(); i++)
+        {
+            VkResult status = vkGetFenceStatus(GPU, inflightFrames[i]->cmdFence);
+            if (status == VK_SUCCESS) //this command buffer is done executing on the GPU, ready for reuse
+            {
+                return inflightFrames[i];
+            }
+        }
+        //no command buffers are available
+        return CreateInflightFrame();
+    }
+}
+
+InflightFrame* GraphicsDevice::CreateInflightFrame()
+{
+    InflightFrame* frame = new InflightFrame();
+
+    VkFenceCreateInfo fence{};
+    fence.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VULKAN_CALL(vkCreateFence(GPU, &fence, nullptr, &frame->cmdFence));
+
+    VkSemaphoreCreateInfo semaphore{};
+    semaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VULKAN_CALL(vkCreateSemaphore(GPU, &semaphore, nullptr, &frame->imageAvailable));
+    VULKAN_CALL(vkCreateSemaphore(GPU, &semaphore, nullptr, &frame->renderFinished));
+
+    VkCommandBufferAllocateInfo cmdBuf{};
+    cmdBuf.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdBuf.commandPool = commandPool;
+    cmdBuf.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmdBuf.commandBufferCount = 1;
+
+    VULKAN_CALL(vkAllocateCommandBuffers(GPU, &cmdBuf, &frame->cmdBuffer));
+
+    return frame;
+}
+
 VkPresentModeKHR GraphicsDevice::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
     for (const auto& availablePresentMode : availablePresentModes) {
@@ -1036,22 +1092,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     if (func != nullptr) {
         func(instance, debugMessenger, pAllocator);
     }
-}
-
-VkShaderModule createShader(VkDevice GPU, const std::vector<char>& shaderBytecode)
-{
-    VkShaderModuleCreateInfo createInfo{};
-    VkShaderModule shaderModule;
-
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderBytecode.data());
-    createInfo.codeSize = shaderBytecode.size();
-
-    if (vkCreateShaderModule(GPU, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create shader");
-    }
-    return shaderModule;
 }
 
 std::array<VkVertexInputAttributeDescription, 2> VertexPositionColor::GetAttributeDescriptions()

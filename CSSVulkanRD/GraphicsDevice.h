@@ -5,7 +5,6 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
-VkShaderModule createShader(VkDevice GPU,const std::vector<char>& shaderBytecode);
 
 struct VertexPositionColor
 {
@@ -28,6 +27,14 @@ struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
+};
+
+struct InflightFrame
+{
+    VkCommandBuffer cmdBuffer;
+    VkFence         cmdFence;
+    VkSemaphore     imageAvailable;
+    VkSemaphore     renderFinished;
 };
 
 class Shader;
@@ -65,13 +72,15 @@ private:
     VkPhysicalDevice physicalGPU = VK_NULL_HANDLE;
     VkPhysicalDeviceMemoryProperties gpuMemoryProperties;
     VkDevice GPU;
-    VkQueue GraphicsQueue;
+    
     VkSurfaceKHR surface;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
     VkPipeline graphicsPipeline;
+
+    VkQueue GraphicsQueue;
     VkCommandPool commandPool;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -135,11 +144,16 @@ private:
 
     std::vector<VkCommandBuffer> commandBuffers;
 
-    uint32_t imageIndex;
-    VkFence commandBufferFence;
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> imagesInFlight;
-    
+    //----
+
+    uint32_t imageIndex = 0;
+    std::vector<InflightFrame*> inflightFrames;
+    InflightFrame* GetAvailableCommandBuffer();
+    InflightFrame* CreateInflightFrame();
+    InflightFrame* pActiveCommandBuffer = nullptr;
+    VkFence acquireImageFence;
 
     const std::vector<const char*> validationLayers = {
         "VK_LAYER_KHRONOS_validation"
