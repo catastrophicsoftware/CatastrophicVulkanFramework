@@ -265,15 +265,6 @@ void GraphicsDevice::createImageViews()
 
 void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be removed
 {
-    //auto vsc = readFile("shaders\\vs.spv");
-    //auto psc = readFile("shaders\\ps.spv");
-
-    //if (vsc.size() == 0 || psc.size() == 0)
-    //    throw std::runtime_error("Error loading pixel or vertex shader");
-
-    //VkShaderModule vertexShader = createShader(GPU, vsc);
-    //VkShaderModule pixelShader = createShader(GPU, psc);
-
     pShader = new Shader(GPU);
     pShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
     pShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -373,9 +364,7 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
     pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
-    if (vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create pipeline layout!");
-    }
+    VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout!");
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -392,10 +381,7 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 
-    if (vkCreateGraphicsPipelines(GPU, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,&graphicsPipeline) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create graphics pipeline!");
-    }
+    VULKAN_CALL_ERROR(vkCreateGraphicsPipelines(GPU, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create graphics pipeline!");
 }
 
 void GraphicsDevice::createRenderPass()

@@ -23,6 +23,7 @@ struct QueueFamilyIndices
     bool isComplete();
 };
 
+
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;

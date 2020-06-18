@@ -15,7 +15,9 @@
 #include <fstream>
 #include <glm/glm.hpp>
 #include <array>
+#include <thread>
 
 
 typedef uint32_t uint32;
-#define VULKAN_CALL(x) if (x != VK_SUCCESS) {throw std::runtime_error("Vulkan API Call Failed!");}
+#define VULKAN_CALL(x) if (x != VK_SUCCESS) {throw std::runtime_error("Vulkan API Call Failed!"); }
+#define VULKAN_CALL_ERROR(x,error_msg) if (x != VK_SUCCESS) {throw std::runtime_error(error_msg); }
