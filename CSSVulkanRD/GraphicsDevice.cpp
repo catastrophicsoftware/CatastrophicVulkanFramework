@@ -119,9 +119,7 @@ void GraphicsDevice::createInstance()
         createInfo.pNext = nullptr;
     }
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create instance!");
-    }
+    VULKAN_CALL_ERROR(vkCreateInstance(&createInfo, nullptr, &instance), "failed to create instance!");
 }
 
 void GraphicsDevice::createLogicalDevice()
@@ -167,10 +165,7 @@ void GraphicsDevice::createLogicalDevice()
         createInfo.enabledLayerCount = 0;
     }
 
-    if (vkCreateDevice(physicalGPU, &createInfo, nullptr, &GPU) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create logical device!");
-    }
+    VULKAN_CALL_ERROR(vkCreateDevice(physicalGPU, &createInfo, nullptr, &GPU), "failed to create logical device!");
 
     vkGetDeviceQueue(GPU, indices.graphicsFamily.value(), 0, &GraphicsQueue);
     vkGetDeviceQueue(GPU, indices.presentFamily.value(), 0, &presentQueue);
@@ -221,10 +216,7 @@ void GraphicsDevice::createSwapChain()
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(GPU, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create swap chain!");
-    }
+    VULKAN_CALL_ERROR(vkCreateSwapchainKHR(GPU, &createInfo, nullptr, &swapChain), "failed to create swapchain");
 
     vkGetSwapchainImagesKHR(GPU, swapChain, &imageCount, nullptr);
     swapChainImages.resize(imageCount);
@@ -257,9 +249,7 @@ void GraphicsDevice::createImageViews()
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(GPU, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create image views!");
-        }
+        VULKAN_CALL_ERROR(vkCreateImageView(GPU, &createInfo, nullptr, &swapChainImageViews[i]), "failed to create image views");
     }
 }
 
@@ -357,12 +347,18 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     colorBlending.blendConstants[2] = 0.0f; // Optional
     colorBlending.blendConstants[3] = 0.0f; // Optional
 
+
+    VkPushConstantRange pcr_vertex_transforms{};
+    pcr_vertex_transforms.offset = 0;
+    pcr_vertex_transforms.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0; // Optional
     pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
+    pipelineLayoutInfo.pPushConstantRanges = &pcr_vertex_transforms;
 
     VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout!");
 
@@ -424,10 +420,8 @@ void GraphicsDevice::createRenderPass()
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(GPU, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error creating render pass");
-    }
+
+    VULKAN_CALL_ERROR(vkCreateRenderPass(GPU, &renderPassInfo, nullptr, &renderPass), "failed to create render pass");
 }
 
 void GraphicsDevice::createFramebuffers()
@@ -448,9 +442,7 @@ void GraphicsDevice::createFramebuffers()
         framebufferInfo.height = swapChainExtent.height;
         framebufferInfo.layers = 1;
 
-        if (vkCreateFramebuffer(GPU, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create framebuffer!");
-        }
+        VULKAN_CALL_ERROR(vkCreateFramebuffer(GPU, &framebufferInfo, nullptr, &swapChainFramebuffers[i]), "failed to create framebuffer");
     }
 }
 
@@ -466,6 +458,24 @@ void GraphicsDevice::createCommandPools()
     if (vkCreateCommandPool(GPU, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
+}
+
+void GraphicsDevice::createDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &layoutInfo, nullptr, &descriptorSetLayout), "Error creating descriptor set layout");
+
 }
 
 void GraphicsDevice::recreateSwapChain()
@@ -487,42 +497,24 @@ void GraphicsDevice::recreateSwapChain()
     createGraphicsPipeline();
     createFramebuffers();
 
-    PrepareFrame(); //6-16-2020 i think this may fix the resize issue.
-    //this does fix the issue.
-
-    //createCommandBuffers();
+    PrepareFrame();
 }
 
 void GraphicsDevice::DrawFrame()
 {
-    //// Check if a previous frame is using this image (i.e. there is its fence to wait on)
-    //if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-    //    vkWaitForFences(GPU, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-    //}
-    //// Mark the image as now being in use by this frame
-    //imagesInFlight[imageIndex] = inFlightFences[currentFrame];
-
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    //VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
     VkSemaphore waitSemaphores[] = { pActiveCommandBuffer->imageAvailable };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    //submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
     submitInfo.pCommandBuffers = &pActiveCommandBuffer->cmdBuffer;
-    //VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
     VkSemaphore signalSemaphores[] = { pActiveCommandBuffer->renderFinished };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
-    
-    //vkResetFences(GPU, 1, &inFlightFences[currentFrame]);
-    //if (vkQueueSubmit(GraphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-    //    throw std::runtime_error("failed to submit draw command buffer!");
-    //}
 
     vkResetFences(GPU, 1, &pActiveCommandBuffer->cmdFence);
     vkQueueSubmit(GraphicsQueue, 1, &submitInfo, pActiveCommandBuffer->cmdFence);
@@ -561,9 +553,7 @@ void GraphicsDevice::setupDebugMessenger()
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfo(createInfo);
 
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-        throw std::runtime_error("failed to set up debug messenger!");
-    }
+    VULKAN_CALL_ERROR(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger), "failed to set up debug messenger!");
 }
 
 std::vector<const char*> GraphicsDevice::getRequiredExtensions()
@@ -609,8 +599,7 @@ bool GraphicsDevice::checkValidationLayerSupport()
 
 void GraphicsDevice::CreateSurface() //possible weird shit
 {
-    if (glfwCreateWindowSurface(instance, pApplicationWindow, nullptr, &surface) != VK_SUCCESS)
-        throw std::runtime_error("Error creating window surface!");
+    VULKAN_CALL_ERROR(glfwCreateWindowSurface(instance, pApplicationWindow, nullptr, &surface), "error creating window surface");
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
@@ -660,12 +649,6 @@ void GraphicsDevice::ResizeFramebuffer()
 
 void GraphicsDevice::PrepareFrame()
 {
-    //vkWaitForFences(GPU, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-    //vkWaitForFences(GPU, 1, &pActiveCommandBuffer->cmdFence, VK_TRUE, UINT64_MAX);
-
-    //VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-    //VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveCommandBuffer->cmdSemaphore, VK_NULL_HANDLE, &imageIndex);
-    
     pActiveCommandBuffer = GetAvailableCommandBuffer();
     VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveCommandBuffer->imageAvailable, VK_NULL_HANDLE, &imageIndex);
 
@@ -689,11 +672,6 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
-
-    /*if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("failed to begin recording command buffer!");
-    }*/
-
     VULKAN_CALL(vkBeginCommandBuffer(pActiveCommandBuffer->cmdBuffer, &beginInfo));
 
     VkRenderPassBeginInfo renderPassInfo{};
@@ -707,18 +685,12 @@ void GraphicsDevice::BeginRenderPass()
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
 
-    //vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    //vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
     vkCmdBeginRenderPass(pActiveCommandBuffer->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(pActiveCommandBuffer->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 }
 
 void GraphicsDevice::EndRenderPass()
 {
-    //vkCmdEndRenderPass(commandBuffers[imageIndex]);
-    //VULKAN_CALL(vkEndCommandBuffer(commandBuffers[imageIndex]));
-
     vkCmdEndRenderPass(pActiveCommandBuffer->cmdBuffer);
     VULKAN_CALL(vkEndCommandBuffer(pActiveCommandBuffer->cmdBuffer));
 }

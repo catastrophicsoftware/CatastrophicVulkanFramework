@@ -24,7 +24,8 @@ struct QueueFamilyIndices
 };
 
 
-struct SwapChainSupportDetails {
+struct SwapChainSupportDetails
+{
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
@@ -37,6 +38,7 @@ struct InflightFrame
     VkSemaphore     imageAvailable;
     VkSemaphore     renderFinished;
 };
+
 
 class Shader;
 class GraphicsDevice
@@ -83,11 +85,10 @@ private:
     VkRenderPass renderPass;
     VkPipeline graphicsPipeline;
 
+    VkDescriptorSetLayout descriptorSetLayout;
+
     VkQueue GraphicsQueue;
     VkCommandPool commandPool;
-
-    //std::vector<VkSemaphore> imageAvailableSemaphores;
-    //std::vector<VkSemaphore> renderFinishedSemaphores;
 
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
@@ -103,24 +104,16 @@ private:
     void createRenderPass();
     void createFramebuffers();
     void createCommandPools();
-    //void createCommandBuffers();
-    //void createSemaphores();
-    //void createSyncObjects();
+    void createDescriptorSetLayout();
     void recreateSwapChain();
     void cleanupSwapchain();
     void getGPUMemoryProperties();
-    void allocateCommandBuffers();
-
-    
-    size_t currentFrame = 0;
-    bool framebufferResized = false;
+    void CreateSurface();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void setupDebugMessenger();
 
     std::vector<const char*> getRequiredExtensions();
-
-    void CreateSurface();
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
@@ -132,7 +125,6 @@ private:
 #endif
 
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
-
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU);
     void PickPhysicalGPU();
@@ -144,14 +136,12 @@ private:
     std::vector<VkImage>         swapChainImages;
     std::vector<VkImageView>     swapChainImageViews;
     std::vector<VkFramebuffer>   swapChainFramebuffers;
-
-    //std::vector<VkCommandBuffer> commandBuffers;
-
-    //std::vector<VkFence> inFlightFences;
-    //std::vector<VkFence> imagesInFlight;
     //----
 
+    size_t currentFrame = 0;
+    bool framebufferResized = false;
     uint32_t imageIndex = 0;
+
     std::vector<InflightFrame*> inflightFrames;
     InflightFrame* GetAvailableCommandBuffer();
     InflightFrame* CreateInflightFrame();

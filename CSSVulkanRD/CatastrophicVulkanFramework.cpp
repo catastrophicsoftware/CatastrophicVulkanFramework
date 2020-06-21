@@ -21,10 +21,19 @@ void CatastrophicVulkanFrameworkApplication::Shutdown()
 	glfwTerminate();
 }
 
+struct WorldViewProjection
+{
+	glm::mat4 world;
+	glm::mat4 view;
+	glm::mat4 projection;
+};
+
 void CatastrophicVulkanFrameworkApplication::MainLoop()
 {
 	//temp
-	GPUBuffer* VertexBuffer = new GPUBuffer(pGraphics);
+	std::unique_ptr<GPUBuffer> VertexBuffer = std::make_unique<GPUBuffer>(this->pGraphics);
+	std::unique_ptr<GPUBuffer> cbWVP = std::make_unique<GPUBuffer>(this->pGraphics);
+
 
 	const std::vector<VertexPositionColor> vertices = {
 		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},

@@ -1,34 +1,37 @@
 #pragma once
 #include "includes.h"
+#include "GPUResource.h"
 
 class GraphicsDevice;
 
-class GPUBuffer
+class GPUBuffer : public GPUResource
 {
 public:
 	GPUBuffer(GraphicsDevice* pDevice);
 	~GPUBuffer();
 
 	void Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode, bool gpuAllocate=true);
-	void Destroy();
-
-	void AllocateGPUMemory();
 
 	void FillBuffer(void* pData);
 
 	void* Map();
 	void Unmap();
+	virtual void Destroy() override;
 
 	VkBuffer GetBuffer() const;
+
+	void ReleaseGPUMemory();
+	void AllocateGPUMemory();
 private:
-	VkBuffer             buffer;
-	VkBufferCreateInfo   bufferDescription;
+	VkBufferCreateInfo   description;
+	VkBuffer buffer;
+	VkDeviceMemory gpuMemoryHandle;
 	VkMemoryRequirements memoryRequirements;
-	VkDeviceMemory       bufferGPUMemoryHandle;
 	VkDevice GPU;
 
 	GraphicsDevice* pDevice;
 
 	bool gpuMemoryAllocated;
 	bool mapped;
+	bool mappable;
 };
