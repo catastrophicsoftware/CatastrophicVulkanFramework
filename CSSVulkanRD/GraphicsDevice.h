@@ -31,6 +31,7 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
+
 struct InflightFrame
 {
     VkCommandBuffer cmdBuffer;
@@ -39,6 +40,27 @@ struct InflightFrame
     VkSemaphore     renderFinished;
 };
 
+struct CommandBuffer
+{
+    VkCommandBuffer commandBuffer;
+    VkFence commandBufferFence;
+};
+
+class DeviceContext
+{
+public:
+    DeviceContext(VkDevice GPU, QueueFamilyIndices queueIndices);
+    ~DeviceContext();
+
+    CommandBuffer* GetCommandBuffer(bool begin=false);
+
+    //todo: resource freeing
+private:
+    VkCommandPool commandPool;
+    std::vector<CommandBuffer*> commandBufferPool;
+
+    VkDevice GPU;
+};
 
 class Shader;
 class GPUMemoryManager;
@@ -52,7 +74,6 @@ public:
     void InitializeVulkan();
     void ShutdownVulkan();
 
-    uint32_t FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties);
     VkDevice GetGPU() const;
     VkPhysicalDevice GetPhysicalDevice() const;
     VkPhysicalDeviceProperties GetDeviceProperties() const;
@@ -71,6 +92,10 @@ public:
     VkCommandBuffer GetActiveCommandBuffer() const; //likely an oversimplification
 
     std::shared_ptr<GPUMemoryManager> GetMainGPUMemoryAllocator() const;
+
+    VkCommandPool GetPrimaryCommandPool() const;
+
+    void PrimaryGPUQueueSubmit(VkSubmitInfo submitInfo, bool block=false);
 private:
     Shader* pShader;
 
@@ -111,7 +136,6 @@ private:
     void createDescriptorSetLayout();
     void recreateSwapChain();
     void cleanupSwapchain();
-    //void getGPUMemoryProperties();
     void CreateSurface();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
@@ -127,6 +151,8 @@ private:
 #else
     const bool enableValidationLayers = true;
 #endif
+
+    bool pipelineDirty;
 
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);

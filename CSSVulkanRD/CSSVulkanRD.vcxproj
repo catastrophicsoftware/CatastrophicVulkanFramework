@@ -153,6 +153,7 @@
     <ClCompile Include="GPUBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CatastrophicVulkanFramework.h" />
@@ -162,6 +163,7 @@
     <ClInclude Include="GPUBuffer.h" />
     <ClInclude Include="includes.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="Texture2D.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

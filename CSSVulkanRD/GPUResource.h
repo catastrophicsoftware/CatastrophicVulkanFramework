@@ -13,4 +13,11 @@ public:
 	virtual void Destroy() = 0;
 protected:
 	GraphicsDevice* pDevice;
+	VkDevice GPU;
+	VkPhysicalDevice physicalDevice;
+	VkMemoryRequirements memoryRequirements;
+
+	bool gpuMemoryAllocated;
+	bool mapped;
+	bool mappable;
 };

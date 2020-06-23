@@ -89,9 +89,9 @@ void GraphicsDevice::createInstance()
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "CatastrophicEngineR&D";
+    appInfo.pApplicationName = "CatastrophicEngineVK_R&D";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "CatastrophicEngine";
+    appInfo.pEngineName = "CatastrophicEngineVK";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
@@ -622,19 +622,6 @@ void GraphicsDevice::ShutdownVulkan()
     cleanup();
 }
 
-uint32_t GraphicsDevice::FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties) //DEPRECATED -- REPLACED BY MEMORY MANAGER
-{
-    for (uint32_t i = 0; i < gpuMemoryProperties.memoryTypeCount; i++)
-    {
-        if ((typeFilter & (1 << i)) && (gpuMemoryProperties.memoryTypes[i].propertyFlags & memProperties) == memProperties)
-        {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("failed to find suitable GPU memory type!");
-}
-
 VkDevice GraphicsDevice::GetGPU() const
 {
     return GPU;
@@ -676,6 +663,17 @@ VkCommandBuffer GraphicsDevice::GetActiveCommandBuffer() const
 std::shared_ptr<GPUMemoryManager> GraphicsDevice::GetMainGPUMemoryAllocator() const
 {
     return memoryManager;
+}
+
+VkCommandPool GraphicsDevice::GetPrimaryCommandPool() const
+{
+    return commandPool;
+}
+
+void GraphicsDevice::PrimaryGPUQueueSubmit(VkSubmitInfo submitInfo, bool block)
+{
+    vkQueueSubmit(GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    if (block) vkQueueWaitIdle(GraphicsQueue);
 }
 
 void GraphicsDevice::BeginRenderPass()
@@ -979,4 +977,90 @@ VkVertexInputBindingDescription VertexPositionColor::GetBindingDescription()
 bool QueueFamilyIndices::isComplete()
 {
     return graphicsFamily.has_value() && presentFamily.has_value();
+}
+
+DeviceContext::DeviceContext(VkDevice GPU, QueueFamilyIndices Indices)
+{
+    this->GPU = GPU;
+
+    VkCommandPoolCreateInfo cpci{};
+    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cpci.queueFamilyIndex = Indices.graphicsFamily.value();
+    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    VULKAN_CALL_ERROR(vkCreateCommandPool(GPU, &cpci, nullptr, &commandPool), "failed to create command pool");
+}
+
+DeviceContext::~DeviceContext()
+{
+}
+
+CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
+{
+    if (commandBufferPool.size() == 0)
+    {
+        CommandBuffer* cb = new CommandBuffer();
+        VkCommandBufferAllocateInfo cba{};
+        cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cba.commandPool = commandPool;
+        cba.commandBufferCount = 1;
+        cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        
+        VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cba, &cb->commandBuffer), "failed to allocate command buffer");
+        VkFenceCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &cb->commandBufferFence), "failed to create command buffer fence");
+
+        commandBufferPool.push_back(cb);
+
+        if (begin)
+        {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            VULKAN_CALL_ERROR(vkBeginCommandBuffer(cb->commandBuffer, &beginInfo), "failed to begin command buffer");
+        }
+
+        return cb;
+    }
+    else
+    {
+        for (CommandBuffer* buffer : commandBufferPool)
+        {
+            if (vkGetFenceStatus(GPU, buffer->commandBufferFence) == VK_SUCCESS)
+            {
+                return buffer;
+            }
+        }
+        
+        //no command buffers available, one will need to be created
+
+        CommandBuffer* cb = new CommandBuffer();
+        VkCommandBufferAllocateInfo cba{};
+        cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cba.commandPool = commandPool;
+        cba.commandBufferCount = 1;
+        cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cba, &cb->commandBuffer), "failed to allocate command buffer");
+        VkFenceCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &cb->commandBufferFence), "failed to create command buffer fence");
+
+        commandBufferPool.push_back(cb);
+
+        if (begin)
+        {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            VULKAN_CALL_ERROR(vkBeginCommandBuffer(cb->commandBuffer, &beginInfo), "failed to begin command buffer");
+        }
+
+        return cb;
+    }
 }

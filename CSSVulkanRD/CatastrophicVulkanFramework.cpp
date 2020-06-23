@@ -49,7 +49,7 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	};
 
 	VertexBuffer->Create(sizeof(vertices[0]) * vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_SHARING_MODE_EXCLUSIVE);
+		VK_SHARING_MODE_EXCLUSIVE,true);
 	VertexBuffer->FillBuffer((void*)vertices.data());
 
 	IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
@@ -57,9 +57,9 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 
 	WorldViewProjection wvp{};
 	wvp.view = glm::lookAt(
-		glm::vec3(0, 0, -10), // Camera is at (-5,3,-10), in World Space
-		glm::vec3(0, 0, 0),    // and looks at the origin
-		glm::vec3(0, -1, 0)    // Head is up (set to 0,-1,0 to look upside-down)
+		glm::vec3(0, 0, -4), 
+		glm::vec3(0, 0, 0),    
+		glm::vec3(0, -1, 0)    
 	);
 	wvp.projection = glm::perspective(glm::radians(45.0f), 800 / (float)600, 0.1f, 1000.0f);
 	wvp.projection[1][1] *= -1;

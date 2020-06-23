@@ -11,7 +11,7 @@ public:
 	GPUBuffer(GraphicsDevice* pDevice);
 	~GPUBuffer();
 
-	void Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode, bool gpuAllocate=true);
+	void Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode,bool dynamic=false, bool gpuAllocate=true);
 
 	void FillBuffer(void* pData);
 
@@ -23,17 +23,19 @@ public:
 
 	void ReleaseGPUMemory();
 	void AllocateGPUMemory();
+
+	bool IsDynamic() const;
 private:
 	VkBufferCreateInfo   description;
 	VkBuffer buffer;
-	VkMemoryRequirements memoryRequirements;
-	VkDevice GPU;
+
+	VkBuffer stagingBuffer;
+	void createStagingBuffer();
 
 	GraphicsDevice* pDevice;
 
-	std::shared_ptr<GPUMemoryAllocation> gpuMemory;
+	bool dynamic;
 
-	bool gpuMemoryAllocated;
-	bool mapped;
-	bool mappable;
+	std::shared_ptr<GPUMemoryAllocation> gpuMemory;
+	std::shared_ptr<GPUMemoryAllocation> stagingMem;
 };
