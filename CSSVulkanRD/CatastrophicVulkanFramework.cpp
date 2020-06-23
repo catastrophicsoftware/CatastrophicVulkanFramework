@@ -2,6 +2,7 @@
 #include "GraphicsDevice.h"
 #include <windows.h>
 #include "GPUBuffer.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 void CatastrophicVulkanFrameworkApplication::Run()
 {
@@ -32,19 +33,37 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 {
 	//temp
 	std::unique_ptr<GPUBuffer> VertexBuffer = std::make_unique<GPUBuffer>(this->pGraphics);
+	std::unique_ptr<GPUBuffer> IndexBuffer = std::make_unique<GPUBuffer>(this->pGraphics);
 	std::unique_ptr<GPUBuffer> cbWVP = std::make_unique<GPUBuffer>(this->pGraphics);
 
 
 	const std::vector<VertexPositionColor> vertices = {
-		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	};
+
+	const std::vector<uint16_t> indices = {
+	0, 1, 2, 2, 3, 0
 	};
 
 	VertexBuffer->Create(sizeof(vertices[0]) * vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_SHARING_MODE_EXCLUSIVE);
-
 	VertexBuffer->FillBuffer((void*)vertices.data());
+
+	IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
+	IndexBuffer->FillBuffer((void*)indices.data());
+
+	WorldViewProjection wvp{};
+	wvp.view = glm::lookAt(
+		glm::vec3(0, 0, -10), // Camera is at (-5,3,-10), in World Space
+		glm::vec3(0, 0, 0),    // and looks at the origin
+		glm::vec3(0, -1, 0)    // Head is up (set to 0,-1,0 to look upside-down)
+	);
+	wvp.projection = glm::perspective(glm::radians(45.0f), 800 / (float)600, 0.1f, 1000.0f);
+	wvp.projection[1][1] *= -1;
+	wvp.world = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
 	while (!glfwWindowShouldClose(ApplicationWindow))
 	{
@@ -59,7 +78,10 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 		VkDeviceSize offsets[] = { 0 };
 		VkBuffer binding[] = { VertexBuffer->GetBuffer() };
 		vkCmdBindVertexBuffers(activeCMDBuffer, 0, 1,binding, offsets);
-		vkCmdDraw(activeCMDBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+		vkCmdBindIndexBuffer(activeCMDBuffer, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+
+		pGraphics->SetPushConstants(VK_SHADER_STAGE_VERTEX_BIT, sizeof(WorldViewProjection), &wvp);
+		vkCmdDrawIndexed(activeCMDBuffer, 6, 1, 0, 0, 0);
 
 		pGraphics->EndRenderPass(); //begin and end pass is the process of recording command buffer
 
@@ -69,6 +91,9 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	}
 
 	pGraphics->WaitForGPUIdle();
+
+	VertexBuffer->Destroy();
+	IndexBuffer->Destroy();
 }
 
 void CatastrophicVulkanFrameworkApplication::FramebufferResizeCallback(GLFWwindow* window, int width, int height)

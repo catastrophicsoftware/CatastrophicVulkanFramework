@@ -41,6 +41,8 @@ struct InflightFrame
 
 
 class Shader;
+class GPUMemoryManager;
+
 class GraphicsDevice
 {
 public:
@@ -53,6 +55,7 @@ public:
     uint32_t FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties);
     VkDevice GetGPU() const;
     VkPhysicalDevice GetPhysicalDevice() const;
+    VkPhysicalDeviceProperties GetDeviceProperties() const;
 
     void ResizeFramebuffer();
 
@@ -63,13 +66,14 @@ public:
     void DrawFrame();
     void PrepareFrame();
 
+    void SetPushConstants(VkShaderStageFlags flags, size_t size, const void* pConstantData);
 
-    //
-    Shader* pShader;
-    //
+    VkCommandBuffer GetActiveCommandBuffer() const; //likely an oversimplification
 
-    VkCommandBuffer GetActiveCommandBuffer() const; //this could be a bad idea.
+    std::shared_ptr<GPUMemoryManager> GetMainGPUMemoryAllocator() const;
 private:
+    Shader* pShader;
+
     GLFWwindow* pApplicationWindow;
 
     VkInstance instance;
@@ -107,7 +111,7 @@ private:
     void createDescriptorSetLayout();
     void recreateSwapChain();
     void cleanupSwapchain();
-    void getGPUMemoryProperties();
+    //void getGPUMemoryProperties();
     void CreateSurface();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
@@ -147,6 +151,12 @@ private:
     InflightFrame* CreateInflightFrame();
     InflightFrame* pActiveCommandBuffer = nullptr;
     VkFence acquireImageFence;
+
+    std::shared_ptr<GPUMemoryManager> memoryManager;
+    void initializeMainMemoryManager();
+
+    VkPhysicalDeviceProperties gpuProperties;
+    void GetGPUProperties();
 
     const std::vector<const char*> validationLayers = {
         "VK_LAYER_KHRONOS_validation"

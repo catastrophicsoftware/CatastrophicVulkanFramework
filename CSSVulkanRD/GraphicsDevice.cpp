@@ -1,6 +1,7 @@
 #include "GraphicsDevice.h"
 #include "GPUBuffer.h"
 #include "Shader.h"
+#include "GPUMemoryManager.h"
 
 GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
@@ -26,22 +27,30 @@ void GraphicsDevice::initVulkan()
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPools();
-    getGPUMemoryProperties();
+
+    GetGPUProperties();
+    initializeMainMemoryManager();
 }
 
 void GraphicsDevice::cleanup()
 {
+    WaitForGPUIdle();
+
     pShader->DestroyShader();
     cleanupSwapchain();
+
     vkDestroyCommandPool(GPU, commandPool, nullptr);
+    vkDestroyDevice(GPU, nullptr);
 
     if (enableValidationLayers) {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
 
     vkDestroySurfaceKHR(instance, surface, nullptr);
-    vkDestroyDevice(GPU, nullptr);
     vkDestroyInstance(instance, nullptr);
+
+    glfwDestroyWindow(pApplicationWindow);
+    glfwTerminate();
 }
 
 void GraphicsDevice::cleanupSwapchain()
@@ -49,11 +58,6 @@ void GraphicsDevice::cleanupSwapchain()
     for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
         vkDestroyFramebuffer(GPU, swapChainFramebuffers[i], nullptr);
     }
-
-    //vkFreeCommandBuffers(GPU, commandPool, commandBuffers.size(), commandBuffers.data());
-
-    //free and flush all command buffers / in flight frames.
-    //not totally sure how necessary this is for this approach
 
     for (int i = 0; i < inflightFrames.size(); i++)
     {
@@ -67,7 +71,6 @@ void GraphicsDevice::cleanupSwapchain()
     }
 
     vkDestroyPipeline(GPU, graphicsPipeline, nullptr);
-
     vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
     vkDestroyRenderPass(GPU, renderPass, nullptr);
 
@@ -76,11 +79,6 @@ void GraphicsDevice::cleanupSwapchain()
     }
 
     vkDestroySwapchainKHR(GPU, swapChain, nullptr);
-}
-
-void GraphicsDevice::getGPUMemoryProperties()
-{
-    vkGetPhysicalDeviceMemoryProperties(physicalGPU, &gpuMemoryProperties);
 }
 
 void GraphicsDevice::createInstance()
@@ -571,6 +569,11 @@ std::vector<const char*> GraphicsDevice::getRequiredExtensions()
     return extensions;
 }
 
+void GraphicsDevice::SetPushConstants(VkShaderStageFlags stage, size_t size, const void* pConstantData)
+{
+    vkCmdPushConstants(GetActiveCommandBuffer(), pipelineLayout, stage, 0, size, pConstantData);
+}
+
 bool GraphicsDevice::checkValidationLayerSupport()
 {
     uint32_t layerCount;
@@ -619,7 +622,7 @@ void GraphicsDevice::ShutdownVulkan()
     cleanup();
 }
 
-uint32_t GraphicsDevice::FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties)
+uint32_t GraphicsDevice::FindGPUMemory(uint32_t typeFilter, VkMemoryPropertyFlags memProperties) //DEPRECATED -- REPLACED BY MEMORY MANAGER
 {
     for (uint32_t i = 0; i < gpuMemoryProperties.memoryTypeCount; i++)
     {
@@ -640,6 +643,11 @@ VkDevice GraphicsDevice::GetGPU() const
 VkPhysicalDevice GraphicsDevice::GetPhysicalDevice() const
 {
     return physicalGPU;
+}
+
+VkPhysicalDeviceProperties GraphicsDevice::GetDeviceProperties() const
+{
+    return gpuProperties;
 }
 
 void GraphicsDevice::ResizeFramebuffer()
@@ -663,6 +671,11 @@ void GraphicsDevice::PrepareFrame()
 VkCommandBuffer GraphicsDevice::GetActiveCommandBuffer() const
 {
     return pActiveCommandBuffer->cmdBuffer;
+}
+
+std::shared_ptr<GPUMemoryManager> GraphicsDevice::GetMainGPUMemoryAllocator() const
+{
+    return memoryManager;
 }
 
 void GraphicsDevice::BeginRenderPass()
@@ -895,6 +908,16 @@ InflightFrame* GraphicsDevice::CreateInflightFrame()
     VULKAN_CALL(vkAllocateCommandBuffers(GPU, &cmdBuf, &frame->cmdBuffer));
 
     return frame;
+}
+
+void GraphicsDevice::initializeMainMemoryManager()
+{
+    memoryManager = std::make_shared<GPUMemoryManager>(physicalGPU, GPU);
+}
+
+void GraphicsDevice::GetGPUProperties()
+{
+    vkGetPhysicalDeviceProperties(physicalGPU, &gpuProperties);
 }
 
 VkPresentModeKHR GraphicsDevice::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)

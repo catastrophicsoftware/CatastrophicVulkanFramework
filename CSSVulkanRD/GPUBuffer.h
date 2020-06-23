@@ -1,6 +1,7 @@
 #pragma once
 #include "includes.h"
 #include "GPUResource.h"
+#include "GPUMemoryManager.h"
 
 class GraphicsDevice;
 
@@ -25,11 +26,12 @@ public:
 private:
 	VkBufferCreateInfo   description;
 	VkBuffer buffer;
-	VkDeviceMemory gpuMemoryHandle;
 	VkMemoryRequirements memoryRequirements;
 	VkDevice GPU;
 
 	GraphicsDevice* pDevice;
+
+	std::shared_ptr<GPUMemoryAllocation> gpuMemory;
 
 	bool gpuMemoryAllocated;
 	bool mapped;

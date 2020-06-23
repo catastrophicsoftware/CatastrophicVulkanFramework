@@ -147,6 +147,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CatastrophicVulkanFramework.cpp" />
+    <ClCompile Include="GPUMemoryManager.cpp" />
     <ClCompile Include="GPUResource.cpp" />
     <ClCompile Include="GraphicsDevice.cpp" />
     <ClCompile Include="GPUBuffer.cpp" />
@@ -155,6 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CatastrophicVulkanFramework.h" />
+    <ClInclude Include="GPUMemoryManager.h" />
     <ClInclude Include="GPUResource.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="GPUBuffer.h" />

@@ -30,11 +30,11 @@ GPUBuffer::GPUBuffer(GraphicsDevice* pDevice) : GPUResource(pDevice)
 
 GPUBuffer::~GPUBuffer()
 {
-	Destroy();
 }
 
 void GPUBuffer::Destroy()
 {
+	vkDestroyBuffer(GPU, buffer, nullptr);
 	ReleaseGPUMemory();
 }
 
@@ -52,7 +52,7 @@ void* GPUBuffer::Map()
 	if (!mapped)
 	{
 		void* pGPUMemoryRegion = nullptr;
-		VULKAN_CALL(vkMapMemory(GPU,gpuMemoryHandle, 0, description.size, 0, &pGPUMemoryRegion));
+		VULKAN_CALL(vkMapMemory(GPU,gpuMemory->gpuMemory, 0, description.size, 0, &pGPUMemoryRegion));
 		mapped = true;
 		return pGPUMemoryRegion;
 	}
@@ -63,7 +63,7 @@ void GPUBuffer::Unmap()
 {
 	if (mapped)
 	{
-		vkUnmapMemory(GPU, gpuMemoryHandle);
+		vkUnmapMemory(GPU, gpuMemory->gpuMemory);
 		mapped = false;
 	}
 }
@@ -77,12 +77,9 @@ void GPUBuffer::AllocateGPUMemory()
 {
 	if (!gpuMemoryAllocated)
 	{
-		VkMemoryAllocateInfo alloc{};
-		alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		alloc.allocationSize = memoryRequirements.size;
-		alloc.memoryTypeIndex = pDevice->FindGPUMemory(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-		VULKAN_CALL_ERROR(vkAllocateMemory(GPU, &alloc, nullptr, &gpuMemoryHandle),"Failed to allocate buffer gpu memory");
-		VULKAN_CALL_ERROR(vkBindBufferMemory(GPU, buffer, gpuMemoryHandle, 0),"failed to bind buffer gpu memory");
+		gpuMemory = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(memoryRequirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		VULKAN_CALL(vkBindBufferMemory(GPU, buffer, gpuMemory->gpuMemory, 0));
+
 		gpuMemoryAllocated = true;
 	}
 }
@@ -91,7 +88,8 @@ void GPUBuffer::ReleaseGPUMemory()
 {
 	if (gpuMemoryAllocated)
 	{
-		vkFreeMemory(GPU,gpuMemoryHandle,nullptr);
+		pDevice->GetMainGPUMemoryAllocator()->ReleaseGPUMemory(gpuMemory->allocID);
+
 		gpuMemoryAllocated = false;
 	}
 }
