@@ -725,9 +725,17 @@ QueueFamilyIndices GraphicsDevice::FindQueueFamilies(VkPhysicalDevice physicalGP
     {
         auto queueFamily = queueFamilies[i];
 
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
             indices.graphicsFamily = i;
             indices.graphicsQueueCount = queueFamilies[i].queueCount;
+
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physicalGPU, i, surface, &presentSupport);
+
+            if (presentSupport) {
+                indices.presentFamily = i;
+            }
         }
 
         if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && !(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) //dedicated transfer queue family found
@@ -740,16 +748,6 @@ QueueFamilyIndices GraphicsDevice::FindQueueFamilies(VkPhysicalDevice physicalGP
         {
             indices.computeFamily = i;
             indices.computeQueueCount = queueFamilies[i].queueCount;
-        }
-
-        if (i == 0) //HACK! required because compute queue also supports present, but we only want to record the first present-capable queue family, which is a graphcis queue.
-        {
-            VkBool32 presentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(physicalGPU, i, surface, &presentSupport);
-
-            if (presentSupport) {
-                indices.presentFamily = i;
-            }
         }
 
         if (indices.isComplete()) {
