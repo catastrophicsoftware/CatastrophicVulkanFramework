@@ -721,24 +721,40 @@ QueueFamilyIndices GraphicsDevice::FindQueueFamilies(VkPhysicalDevice physicalGP
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physicalGPU, &queueFamilyCount, queueFamilies.data());
 
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
+    for(int i = 0; i < queueFamilyCount; ++i)
+    {
+        auto queueFamily = queueFamilies[i];
+
         if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             indices.graphicsFamily = i;
+            indices.graphicsQueueCount = queueFamilies[i].queueCount;
         }
 
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalGPU, i, surface, &presentSupport);
+        if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && !(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) //dedicated transfer queue family found
+        {
+            indices.transferFamily = i;
+            indices.transferQueueCount = queueFamilies[i].queueCount;
+        }
 
-        if (presentSupport) {
-            indices.presentFamily = i;
+        if ((queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) //dedicated compute queue family found
+        {
+            indices.computeFamily = i;
+            indices.computeQueueCount = queueFamilies[i].queueCount;
+        }
+
+        if (i == 0) //HACK! required because compute queue also supports present, but we only want to record the first present-capable queue family, which is a graphcis queue.
+        {
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physicalGPU, i, surface, &presentSupport);
+
+            if (presentSupport) {
+                indices.presentFamily = i;
+            }
         }
 
         if (indices.isComplete()) {
             break;
         }
-
-        i++;
     }
 
     return indices;
@@ -976,7 +992,7 @@ VkVertexInputBindingDescription VertexPositionColor::GetBindingDescription()
 
 bool QueueFamilyIndices::isComplete()
 {
-    return graphicsFamily.has_value() && presentFamily.has_value();
+    return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 }
 
 DeviceContext::DeviceContext(VkDevice GPU, QueueFamilyIndices Indices)

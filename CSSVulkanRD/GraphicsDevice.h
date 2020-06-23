@@ -18,7 +18,15 @@ struct VertexPositionColor
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
+    uint32_t graphicsQueueCount;
+
     std::optional<uint32_t> presentFamily;
+
+    std::optional<uint32_t> transferFamily;
+    uint32_t transferQueueCount;
+
+    std::optional<uint32_t> computeFamily;
+    uint32_t computeQueueCount;
 
     bool isComplete();
 };
@@ -116,8 +124,10 @@ private:
 
     VkDescriptorSetLayout descriptorSetLayout;
 
-    VkQueue GraphicsQueue;
+    VkQueue GraphicsQueue; //todo: refactor into "primaryGraphicsQueue"
     VkCommandPool commandPool;
+
+    VkQueue primaryTransferQueue;
 
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
