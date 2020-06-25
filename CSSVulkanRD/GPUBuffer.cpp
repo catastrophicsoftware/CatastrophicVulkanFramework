@@ -40,52 +40,34 @@ void GPUBuffer::Destroy()
 	ReleaseGPUMemory();
 }
 
-
-void GPUBuffer::FillBuffer(void* pData)
+void GPUBuffer::Update(void* pData)
 {
 	if (dynamic)
 	{
 		void* pGPUMem = Map();
 		memcpy(pGPUMem, pData, (size_t)description.size);
 
-		Unmap();
+		UnMap();
 	}
 	else
 	{
 		void* pStagingMem = nullptr;
-		VULKAN_CALL_ERROR(vkMapMemory(GPU, stagingMem->gpuMemory, 0, description.size, 0, &pStagingMem), "failed to map staging buffer");
+		VULKAN_CALL_ERROR(vkMapMemory(GPU, stagingMem->handle, 0, description.size, 0, &pStagingMem), "failed to map staging buffer");
 		memcpy(pStagingMem, pData, description.size);
-		vkUnmapMemory(GPU, stagingMem->gpuMemory);
+		vkUnmapMemory(GPU, stagingMem->handle);
 
-		VkCommandBufferAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = pDevice->GetPrimaryCommandPool(); //streamline this, submit on background thread / pool
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer cmdBuf;
-		VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &allocInfo, &cmdBuf), "failed to allocate staging copy command buffer");
-
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(cmdBuf, &beginInfo);
+		auto cmdBuf = pDevice->ImmediateContext->GetCommandBuffer(true);
 
 		VkBufferCopy copyRegion{};
 		copyRegion.srcOffset = 0; // Optional
 		copyRegion.dstOffset = 0; // Optional
 		copyRegion.size = description.size;
-		vkCmdCopyBuffer(cmdBuf, stagingBuffer, buffer, 1, &copyRegion);
+		vkCmdCopyBuffer(cmdBuf->commandBuffer, stagingBuffer, buffer, 1, &copyRegion);
 
-		vkEndCommandBuffer(cmdBuf);
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cmdBuf;
+		vkEndCommandBuffer(cmdBuf->commandBuffer);
 
-		pDevice->PrimaryGPUQueueSubmit(submitInfo, true);
-
-		vkFreeCommandBuffers(GPU, pDevice->GetPrimaryCommandPool(), 1, &cmdBuf);
+		pDevice->ImmediateContext->SubmitCommandBuffer(cmdBuf, true);
+		int x = 0;
 	}
 }
 
@@ -94,18 +76,18 @@ void* GPUBuffer::Map()
 	if (!mapped)
 	{
 		void* pGPUMemoryRegion = nullptr;
-		VULKAN_CALL(vkMapMemory(GPU,gpuMemory->gpuMemory, 0, description.size, 0, &pGPUMemoryRegion));
+		VULKAN_CALL(vkMapMemory(GPU,gpuMemory->handle, 0, description.size, 0, &pGPUMemoryRegion));
 		mapped = true;
 		return pGPUMemoryRegion;
 	}
 	return nullptr;
 }
 
-void GPUBuffer::Unmap()
+void GPUBuffer::UnMap()
 {
 	if (mapped)
 	{
-		vkUnmapMemory(GPU, gpuMemory->gpuMemory);
+		vkUnmapMemory(GPU, gpuMemory->handle);
 		mapped = false;
 	}
 }
@@ -131,7 +113,7 @@ void GPUBuffer::AllocateGPUMemory()
 		}
 
 		gpuMemory = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(memoryRequirements, memFlags);
-		VULKAN_CALL(vkBindBufferMemory(GPU, buffer, gpuMemory->gpuMemory, 0));
+		VULKAN_CALL(vkBindBufferMemory(GPU, buffer, gpuMemory->handle, 0));
 
 		if (!dynamic)
 		{
@@ -150,14 +132,14 @@ bool GPUBuffer::IsDynamic() const
 void GPUBuffer::createStagingBuffer()
 {
 	VkBufferCreateInfo stagingInfo = description;
-	stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	stagingInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
 	VULKAN_CALL_ERROR(vkCreateBuffer(GPU, &stagingInfo, nullptr, &stagingBuffer), "failed to create staging buffer");
 	VkMemoryRequirements allocReq = {};
 	vkGetBufferMemoryRequirements(GPU, stagingBuffer, &allocReq);
 	stagingMem = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(allocReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	VULKAN_CALL_ERROR(vkBindBufferMemory(GPU, stagingBuffer, stagingMem->gpuMemory, 0), "failed to bind staging buffer gpu memory");
+	VULKAN_CALL_ERROR(vkBindBufferMemory(GPU, stagingBuffer, stagingMem->handle, 0), "failed to bind staging buffer gpu memory");
 }
 
 void GPUBuffer::ReleaseGPUMemory()

@@ -31,14 +31,12 @@ struct QueueFamilyIndices
     bool isComplete();
 };
 
-
 struct SwapChainSupportDetails
 {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
-
 
 struct InflightFrame
 {
@@ -57,15 +55,19 @@ struct CommandBuffer
 class DeviceContext
 {
 public:
-    DeviceContext(VkDevice GPU, QueueFamilyIndices queueIndices);
+    DeviceContext(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool=false);
     ~DeviceContext();
 
     CommandBuffer* GetCommandBuffer(bool begin=false);
+    void SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block=false);
+    void SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence);
 
-    //todo: resource freeing
+    void SetQueue(VkQueue queue);
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;
+
+    VkQueue gpuQueue;
 
     VkDevice GPU;
 };
@@ -103,7 +105,18 @@ public:
 
     VkCommandPool GetPrimaryCommandPool() const;
 
-    void PrimaryGPUQueueSubmit(VkSubmitInfo submitInfo, bool block=false);
+    void PrimaryGraphicsQueueSubmit(VkSubmitInfo submitInfo, bool block=false);
+
+    void TransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block=false);
+
+    VkQueue GetTransferQueue(uint32_t index);
+    VkQueue GetComputeQueue(uint32_t index);
+
+    std::shared_ptr<DeviceContext> GetTransferContext() const;
+
+
+    std::shared_ptr<DeviceContext> ImmediateContext;
+    std::shared_ptr<DeviceContext> TransferContext;
 private:
     Shader* pShader;
 
@@ -124,10 +137,14 @@ private:
 
     VkDescriptorSetLayout descriptorSetLayout;
 
-    VkQueue GraphicsQueue; //todo: refactor into "primaryGraphicsQueue"
-    VkCommandPool commandPool;
+    VkQueue primaryGraphicsQueue; //this is queue index 0 of the GPUs main graphics queue family
+    VkCommandPool primaryCommandPool; //deprecated, replaced by ImmediateContext
 
-    VkQueue primaryTransferQueue;
+    std::vector<VkQueue> transferQueues;
+    std::vector<VkQueue> computeQueues;
+
+    std::shared_ptr<DeviceContext> immediateContext;
+    std::shared_ptr<DeviceContext> transferContext;
 
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
@@ -168,6 +185,8 @@ private:
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU);
     void PickPhysicalGPU();
+
+
     SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice physicalGPU);
     VkSurfaceFormatKHR      ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR        ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);

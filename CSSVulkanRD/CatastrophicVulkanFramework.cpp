@@ -50,10 +50,10 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 
 	VertexBuffer->Create(sizeof(vertices[0]) * vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_SHARING_MODE_EXCLUSIVE,true);
-	VertexBuffer->FillBuffer((void*)vertices.data());
+	VertexBuffer->Update((void*)vertices.data());
 
 	IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
-	IndexBuffer->FillBuffer((void*)indices.data());
+	IndexBuffer->Update((void*)indices.data());
 
 	WorldViewProjection wvp{};
 	wvp.view = glm::lookAt(

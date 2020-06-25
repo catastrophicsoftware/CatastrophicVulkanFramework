@@ -6,7 +6,7 @@
 
 struct GPUMemoryAllocation
 {
-	VkDeviceMemory       gpuMemory;
+	VkDeviceMemory       handle;
 	VkMemoryAllocateInfo allocInfo;
 	uint32_t allocID;
 

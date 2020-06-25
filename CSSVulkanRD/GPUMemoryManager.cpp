@@ -26,7 +26,7 @@ std::shared_ptr<GPUMemoryAllocation> GPUMemoryManager::AllocateGPUMemory(VkMemor
     gpu_mem->allocID = allocCount;
     allocCount++;
 
-    VULKAN_CALL_ERROR(vkAllocateMemory(GPU, &gpu_mem->allocInfo, nullptr, &gpu_mem->gpuMemory), "Failed to allocate GPU memory!");
+    VULKAN_CALL_ERROR(vkAllocateMemory(GPU, &gpu_mem->allocInfo, nullptr, &gpu_mem->handle), "Failed to allocate GPU memory!");
 
     gpuMemoryUsed += requiredAlloc.size;
     allocationList.push_back(gpu_mem);
@@ -42,7 +42,7 @@ void GPUMemoryManager::ReleaseGPUMemory(uint32_t allocID)
     {
         if (allocationList[i]->allocID == allocID)
         {
-            vkFreeMemory(GPU,allocationList[i]->gpuMemory,nullptr);
+            vkFreeMemory(GPU,allocationList[i]->handle,nullptr);
             allocationList.erase(allocationList.begin() + i);
         }
     }
@@ -73,7 +73,7 @@ GPUMemoryAllocation::GPUMemoryAllocation()
 {
     this->allocID = 0;
     this->allocInfo = {};
-    this->gpuMemory = 0;
+    this->handle = 0;
 }
 
 GPUMemoryAllocation::~GPUMemoryAllocation()

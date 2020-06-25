@@ -13,11 +13,10 @@ public:
 
 	void Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode,bool dynamic=false, bool gpuAllocate=true);
 
-	void FillBuffer(void* pData);
-
-	void* Map();
-	void Unmap();
+	virtual void* Map() override;
+	virtual void UnMap() override;
 	virtual void Destroy() override;
+	virtual void Update(void* pData) override;
 
 	VkBuffer GetBuffer() const;
 
