@@ -29,8 +29,8 @@ private:
 
 	void transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout);
 
-	std::shared_ptr<GPUMemoryAllocation> textureMem;
-	std::shared_ptr<GPUMemoryAllocation> stagingMem;
+	GPUMemoryAllocation* textureMem;
+	GPUMemoryAllocation* stagingMem;
 	void createStagingResource();
 	void destroyStagingResource();
 

@@ -35,6 +35,6 @@ private:
 
 	bool dynamic;
 
-	std::shared_ptr<GPUMemoryAllocation> gpuMemory;
-	std::shared_ptr<GPUMemoryAllocation> stagingMem;
+	GPUMemoryAllocation* gpuMemory;
+	GPUMemoryAllocation* stagingMem;
 };

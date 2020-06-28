@@ -66,6 +66,7 @@ public:
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;
+    CommandBuffer* createCommandBuffer(bool start);
 
     VkQueue gpuQueue;
 

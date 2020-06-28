@@ -48,8 +48,10 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	0, 1, 2, 2, 3, 0
 	};
 
+
+
 	VertexBuffer->Create(sizeof(vertices[0]) * vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_SHARING_MODE_EXCLUSIVE,true);
+		VK_SHARING_MODE_EXCLUSIVE);
 	VertexBuffer->Update((void*)vertices.data());
 
 	IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);

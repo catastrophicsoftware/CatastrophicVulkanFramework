@@ -1082,30 +1082,7 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
 {
     if (commandBufferPool.size() == 0)
     {
-        CommandBuffer* cb = new CommandBuffer();
-        VkCommandBufferAllocateInfo cba{};
-        cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cba.commandPool = commandPool;
-        cba.commandBufferCount = 1;
-        cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        
-        VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cba, &cb->commandBuffer), "failed to allocate command buffer");
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fci.flags = 0;
-
-        VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &cb->commandBufferFence), "failed to create command buffer fence");
-
-        commandBufferPool.push_back(cb);
-
-        if (begin)
-        {
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            VULKAN_CALL_ERROR(vkBeginCommandBuffer(cb->commandBuffer, &beginInfo), "failed to begin command buffer");
-        }
-
+        auto cb = createCommandBuffer(begin);
         return cb;
     }
     else
@@ -1114,36 +1091,19 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
         {
             if (vkGetFenceStatus(GPU, buffer->commandBufferFence) == VK_SUCCESS)
             {
+                if (begin)
+                {
+                    VkCommandBufferBeginInfo beginInfo{};
+                    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                    VULKAN_CALL_ERROR(vkBeginCommandBuffer(buffer->commandBuffer, &beginInfo), "failed to begin command buffer");
+                }
                 return buffer;
             }
         }
         
-        //no command buffers available, one will need to be created
-
-        CommandBuffer* cb = new CommandBuffer();
-        VkCommandBufferAllocateInfo cba{};
-        cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cba.commandPool = commandPool;
-        cba.commandBufferCount = 1;
-        cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-        VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cba, &cb->commandBuffer), "failed to allocate command buffer");
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &cb->commandBufferFence), "failed to create command buffer fence");
-
-        commandBufferPool.push_back(cb);
-
-        if (begin)
-        {
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            VULKAN_CALL_ERROR(vkBeginCommandBuffer(cb->commandBuffer, &beginInfo), "failed to begin command buffer");
-        }
-
+        //all command buffers are busy executing, new command buffer required
+        auto cb = createCommandBuffer(begin);
         return cb;
     }
 }
@@ -1155,6 +1115,7 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer,bool block)
     submit.commandBufferCount = 1;
     submit.pCommandBuffers = &commandBuffer->commandBuffer;
 
+    vkResetFences(GPU, 1, &commandBuffer->commandBufferFence);
     vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->commandBufferFence);
 
     if (block) vkQueueWaitIdle(gpuQueue);
@@ -1166,7 +1127,7 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* o
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit.commandBufferCount = 1;
     submit.pCommandBuffers = &commandBuffer->commandBuffer;
-
+    vkResetFences(GPU, 1, &commandBuffer->commandBufferFence);
     vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->commandBufferFence);
     outPFence = &commandBuffer->commandBufferFence;
 }
@@ -1174,4 +1135,33 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* o
 void DeviceContext::SetQueue(VkQueue queue)
 {
     gpuQueue = queue;
+}
+
+CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
+{
+    CommandBuffer* newBuffer = new CommandBuffer();
+
+    VkCommandBufferAllocateInfo cbai{};
+    cbai.commandBufferCount = 1;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbai.commandPool = commandPool;
+
+    VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cbai, &newBuffer->commandBuffer), "failed to allocate command buffer");
+
+    VkFenceCreateInfo fci{};
+    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &newBuffer->commandBufferFence), "failed to create command buffer fence");
+    commandBufferPool.push_back(newBuffer);
+
+    if (begin)
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VULKAN_CALL_ERROR(vkBeginCommandBuffer(newBuffer->commandBuffer, &beginInfo), "failed to begin command buffer");
+
+        return newBuffer;
+    }
+    return newBuffer;
 }
