@@ -57,6 +57,9 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 	IndexBuffer->Update((void*)indices.data());
 
+	cbWVP->Create(sizeof(WorldViewProjection), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_SHARING_MODE_EXCLUSIVE, true);
+
 	WorldViewProjection wvp{};
 	wvp.view = glm::lookAt(
 		glm::vec3(0, 0, -4), 
@@ -73,17 +76,17 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 
 		pGraphics->PrepareFrame();
 		pGraphics->BeginRenderPass();
-		VkCommandBuffer activeCMDBuffer = pGraphics->GetActiveCommandBuffer();
+		auto currentFrame = pGraphics->GetCurrentFrame();
 		//all resource / buffer / view / whatever binding for rendered objects using current graphics
 		//pipeline state
 
 		VkDeviceSize offsets[] = { 0 };
 		VkBuffer binding[] = { VertexBuffer->GetBuffer() };
-		vkCmdBindVertexBuffers(activeCMDBuffer, 0, 1,binding, offsets);
-		vkCmdBindIndexBuffer(activeCMDBuffer, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(currentFrame->cmdBuffer, 0, 1,binding, offsets);
+		vkCmdBindIndexBuffer(currentFrame->cmdBuffer, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
 		pGraphics->SetPushConstants(VK_SHADER_STAGE_VERTEX_BIT, sizeof(WorldViewProjection), &wvp);
-		vkCmdDrawIndexed(activeCMDBuffer, 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(currentFrame->cmdBuffer, 6, 1, 0, 0, 0);
 
 		pGraphics->EndRenderPass(); //begin and end pass is the process of recording command buffer
 
@@ -93,9 +96,6 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	}
 
 	pGraphics->WaitForGPUIdle();
-
-	VertexBuffer->Destroy();
-	IndexBuffer->Destroy();
 }
 
 void CatastrophicVulkanFrameworkApplication::FramebufferResizeCallback(GLFWwindow* window, int width, int height)

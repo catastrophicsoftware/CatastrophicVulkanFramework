@@ -15,6 +15,15 @@ struct VertexPositionColor
     static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
 };
 
+struct VertexPositionTexture
+{
+    glm::vec2 position;
+    glm::vec2 uv;
+
+    static VkVertexInputBindingDescription GetBindingDescription();
+    static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
+};
+
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -44,6 +53,9 @@ struct InflightFrame
     VkFence         cmdFence;
     VkSemaphore     imageAvailable;
     VkSemaphore     renderFinished;
+    uint32_t        frameIndex;
+
+    void* pPerFrameData;
 };
 
 struct CommandBuffer
@@ -63,6 +75,8 @@ public:
     void SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence);
 
     void SetQueue(VkQueue queue);
+
+    void Destroy();
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;
@@ -100,21 +114,19 @@ public:
 
     void SetPushConstants(VkShaderStageFlags flags, size_t size, const void* pConstantData);
 
-    VkCommandBuffer GetActiveCommandBuffer() const; //likely an oversimplification
+    InflightFrame* GetCurrentFrame(); //likely an oversimplification
 
     std::shared_ptr<GPUMemoryManager> GetMainGPUMemoryAllocator() const;
 
     VkCommandPool GetPrimaryCommandPool() const;
 
     void PrimaryGraphicsQueueSubmit(VkSubmitInfo submitInfo, bool block=false);
-
-    void TransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block=false);
+    void PrimaryTransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block=false);
 
     VkQueue GetTransferQueue(uint32_t index);
     VkQueue GetComputeQueue(uint32_t index);
 
     std::shared_ptr<DeviceContext> GetTransferContext() const;
-
 
     std::shared_ptr<DeviceContext> ImmediateContext;
     std::shared_ptr<DeviceContext> TransferContext;
@@ -203,9 +215,9 @@ private:
     uint32_t imageIndex = 0;
 
     std::vector<InflightFrame*> inflightFrames;
-    InflightFrame* GetAvailableCommandBuffer();
+    InflightFrame* GetAvailableFrame();
     InflightFrame* CreateInflightFrame();
-    InflightFrame* pActiveCommandBuffer = nullptr;
+    InflightFrame* pActiveFrame = nullptr;
     VkFence acquireImageFence;
 
     std::shared_ptr<GPUMemoryManager> memoryManager;

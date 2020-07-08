@@ -55,7 +55,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 	}
 }
 
-void Shader::DestroyShader(VkShaderStageFlags stage)
+void Shader::Destroy(VkShaderStageFlags stage)
 {
 	switch (stage)
 	{
@@ -88,7 +88,7 @@ void Shader::DestroyShader(VkShaderStageFlags stage)
 	}
 }
 
-void Shader::DestroyShader()
+void Shader::Destroy()
 {
 	if (VertexShader)
 	{

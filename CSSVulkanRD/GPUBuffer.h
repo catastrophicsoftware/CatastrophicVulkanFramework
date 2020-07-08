@@ -38,3 +38,29 @@ private:
 	GPUMemoryAllocation* gpuMemory;
 	GPUMemoryAllocation* stagingMem;
 };
+
+
+struct GPUBufferContainer
+{
+	GPUBuffer* GPUBuffer;
+	VkFence* pBufferOpFence; //pointer to the current fence associated
+	//with the gpu operation that uses this buffer
+};
+
+
+class DynamicPerFrameGPUBuffer
+{
+public:
+	DynamicPerFrameGPUBuffer(GraphicsDevice* pDevice);
+	~DynamicPerFrameGPUBuffer();
+
+	uint32_t GetBufferCount() const;
+
+	void Create(uint32_t bufferCount, uint32_t bufferSize, VkBufferUsageFlagBits bufferUsage);
+
+	std::shared_ptr<GPUBufferContainer> GetBuffer(uint32_t index) const;
+private:
+	GraphicsDevice* pDevice;
+	std::vector<std::shared_ptr<GPUBufferContainer>> buffers;
+	uint32_t count;
+};

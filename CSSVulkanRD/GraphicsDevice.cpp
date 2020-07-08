@@ -6,6 +6,7 @@
 GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
     pApplicationWindow = pAppWindow;
+    pipelineDirty = false;
 }
 
 GraphicsDevice::~GraphicsDevice()
@@ -22,7 +23,6 @@ void GraphicsDevice::initVulkan()
     createLogicalDevice();
     createSwapChain();
     createImageViews();
-    createRenderPass();
     createRenderPass();
     createGraphicsPipeline();
     createFramebuffers();
@@ -47,9 +47,13 @@ void GraphicsDevice::cleanup()
 {
     WaitForGPUIdle();
 
-    pShader->DestroyShader();
+    immediateContext->Destroy();
+    transferContext->Destroy();
+
+    pShader->Destroy();
     cleanupSwapchain();
 
+    vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
     vkDestroyCommandPool(GPU, primaryCommandPool, nullptr);
     vkDestroyDevice(GPU, nullptr);
 
@@ -70,6 +74,7 @@ void GraphicsDevice::cleanupSwapchain()
         vkDestroyFramebuffer(GPU, swapChainFramebuffers[i], nullptr);
     }
 
+    vkDestroyFence(GPU, acquireImageFence, nullptr);
     for (int i = 0; i < inflightFrames.size(); i++)
     {
         vkFreeCommandBuffers(GPU, primaryCommandPool, 1, &inflightFrames[i]->cmdBuffer);
@@ -296,7 +301,7 @@ void GraphicsDevice::createImageViews()
     }
 }
 
-void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be removed
+void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be refactored
 {
     pShader = new Shader(GPU);
     pShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
@@ -390,18 +395,17 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     colorBlending.blendConstants[2] = 0.0f; // Optional
     colorBlending.blendConstants[3] = 0.0f; // Optional
 
-
-    VkPushConstantRange pcr_vertex_transforms{};
+    /*VkPushConstantRange pcr_vertex_transforms{};
     pcr_vertex_transforms.offset = 0;
     pcr_vertex_transforms.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;
+    pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;*/
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0; // Optional
     pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = &pcr_vertex_transforms;
+    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
     VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout!");
 
@@ -463,7 +467,6 @@ void GraphicsDevice::createRenderPass()
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-
     VULKAN_CALL_ERROR(vkCreateRenderPass(GPU, &renderPassInfo, nullptr, &renderPass), "failed to create render pass");
 }
 
@@ -518,7 +521,6 @@ void GraphicsDevice::createDescriptorSetLayout()
     layoutInfo.pBindings = &uboLayoutBinding;
 
     VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &layoutInfo, nullptr, &descriptorSetLayout), "Error creating descriptor set layout");
-
 }
 
 void GraphicsDevice::recreateSwapChain()
@@ -548,19 +550,19 @@ void GraphicsDevice::DrawFrame()
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = { pActiveCommandBuffer->imageAvailable };
+    VkSemaphore waitSemaphores[] = { pActiveFrame->imageAvailable };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &pActiveCommandBuffer->cmdBuffer;
-    VkSemaphore signalSemaphores[] = { pActiveCommandBuffer->renderFinished };
+    submitInfo.pCommandBuffers = &pActiveFrame->cmdBuffer;
+    VkSemaphore signalSemaphores[] = { pActiveFrame->renderFinished };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    vkResetFences(GPU, 1, &pActiveCommandBuffer->cmdFence);
-    vkQueueSubmit(primaryGraphicsQueue, 1, &submitInfo, pActiveCommandBuffer->cmdFence);
+    vkResetFences(GPU, 1, &pActiveFrame->cmdFence);
+    vkQueueSubmit(primaryGraphicsQueue, 1, &submitInfo, pActiveFrame->cmdFence);
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -616,7 +618,12 @@ std::vector<const char*> GraphicsDevice::getRequiredExtensions()
 
 void GraphicsDevice::SetPushConstants(VkShaderStageFlags stage, size_t size, const void* pConstantData)
 {
-    vkCmdPushConstants(GetActiveCommandBuffer(), pipelineLayout, stage, 0, size, pConstantData);
+    vkCmdPushConstants(GetCurrentFrame()->cmdBuffer, pipelineLayout, stage, 0, size, pConstantData);
+}
+
+InflightFrame* GraphicsDevice::GetCurrentFrame()
+{
+    return pActiveFrame;
 }
 
 bool GraphicsDevice::checkValidationLayerSupport()
@@ -689,8 +696,9 @@ void GraphicsDevice::ResizeFramebuffer()
 
 void GraphicsDevice::PrepareFrame()
 {
-    pActiveCommandBuffer = GetAvailableCommandBuffer();
-    VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveCommandBuffer->imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    pActiveFrame = GetAvailableFrame();
+    VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveFrame->imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    pActiveFrame->frameIndex = imageIndex;
 
     if (res == VK_ERROR_OUT_OF_DATE_KHR)
     {
@@ -698,11 +706,6 @@ void GraphicsDevice::PrepareFrame()
     }
     else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("Failed to acquire swap chain image!");
-}
-
-VkCommandBuffer GraphicsDevice::GetActiveCommandBuffer() const
-{
-    return pActiveCommandBuffer->cmdBuffer;
 }
 
 std::shared_ptr<GPUMemoryManager> GraphicsDevice::GetMainGPUMemoryAllocator() const
@@ -721,7 +724,7 @@ void GraphicsDevice::PrimaryGraphicsQueueSubmit(VkSubmitInfo submitInfo, bool bl
     if (block) vkQueueWaitIdle(primaryGraphicsQueue);
 }
 
-void GraphicsDevice::TransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block)
+void GraphicsDevice::PrimaryTransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block)
 {
     VULKAN_CALL_ERROR(vkQueueSubmit(transferQueues[transferQueueIndex], 1, &submitInfo, VK_NULL_HANDLE), "failed to submit transfer queue");
 }
@@ -748,7 +751,7 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    VULKAN_CALL(vkBeginCommandBuffer(pActiveCommandBuffer->cmdBuffer, &beginInfo));
+    VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer, &beginInfo));
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -761,14 +764,14 @@ void GraphicsDevice::BeginRenderPass()
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
 
-    vkCmdBeginRenderPass(pActiveCommandBuffer->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(pActiveCommandBuffer->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdBeginRenderPass(pActiveFrame->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(pActiveFrame->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 }
 
 void GraphicsDevice::EndRenderPass()
 {
-    vkCmdEndRenderPass(pActiveCommandBuffer->cmdBuffer);
-    VULKAN_CALL(vkEndCommandBuffer(pActiveCommandBuffer->cmdBuffer));
+    vkCmdEndRenderPass(pActiveFrame->cmdBuffer);
+    VULKAN_CALL(vkEndCommandBuffer(pActiveFrame->cmdBuffer));
 }
 
 void GraphicsDevice::WaitForGPUIdle()
@@ -936,7 +939,7 @@ VkExtent2D GraphicsDevice::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capa
     }
 }
 
-InflightFrame* GraphicsDevice::GetAvailableCommandBuffer()
+InflightFrame* GraphicsDevice::GetAvailableFrame()
 {
     if (inflightFrames.size() == 0)
     {
@@ -1135,6 +1138,16 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* o
 void DeviceContext::SetQueue(VkQueue queue)
 {
     gpuQueue = queue;
+}
+
+void DeviceContext::Destroy()
+{
+    vkDestroyCommandPool(GPU, commandPool, nullptr);
+
+    for (int i = 0; i < commandBufferPool.size(); ++i)
+    {
+        vkDestroyFence(GPU, commandBufferPool[i]->commandBufferFence, nullptr);
+    }
 }
 
 CommandBuffer* DeviceContext::createCommandBuffer(bool begin)

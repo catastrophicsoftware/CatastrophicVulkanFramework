@@ -21,8 +21,8 @@ public:
 	~Shader();
 
 	void LoadShader(const char* shaderFile, const char* entrypoint, VkShaderStageFlagBits stage);
-	void DestroyShader(VkShaderStageFlags stage);
-	void DestroyShader();
+	void Destroy(VkShaderStageFlags stage);
+	void Destroy();
 	std::shared_ptr<ShaderResource> GetShader(VkShaderStageFlagBits stage);
 private:
 	VkDevice GPU;

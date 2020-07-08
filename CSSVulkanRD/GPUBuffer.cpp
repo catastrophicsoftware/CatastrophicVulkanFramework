@@ -32,12 +32,19 @@ GPUBuffer::GPUBuffer(GraphicsDevice* pDevice) : GPUResource(pDevice)
 
 GPUBuffer::~GPUBuffer()
 {
+	Destroy();
 }
 
 void GPUBuffer::Destroy()
 {
 	vkDestroyBuffer(GPU, buffer, nullptr);
 	ReleaseGPUMemory();
+
+	if (stagingBuffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer(GPU, stagingBuffer, nullptr);
+		pDevice->GetMainGPUMemoryAllocator()->ReleaseGPUMemory(stagingMem->allocID);
+	}
 }
 
 void GPUBuffer::Update(void* pData)
@@ -112,7 +119,7 @@ void GPUBuffer::AllocateGPUMemory()
 			memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		}
 
-		gpuMemory = pDevice->GetMainGPUMemoryAllocator()->PoolAllocateGPUMemory(memoryRequirements, memFlags);
+		gpuMemory = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(memoryRequirements, memFlags);
 		VULKAN_CALL(vkBindBufferMemory(GPU, buffer, gpuMemory->handle, gpuMemory->offset));
 
 		if (!dynamic)
@@ -137,7 +144,7 @@ void GPUBuffer::createStagingBuffer()
 	VULKAN_CALL_ERROR(vkCreateBuffer(GPU, &stagingInfo, nullptr, &stagingBuffer), "failed to create staging buffer");
 	VkMemoryRequirements allocReq = {};
 	vkGetBufferMemoryRequirements(GPU, stagingBuffer, &allocReq);
-	stagingMem = pDevice->GetMainGPUMemoryAllocator()->PoolAllocateGPUMemory(allocReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	stagingMem = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(allocReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	VULKAN_CALL_ERROR(vkBindBufferMemory(GPU, stagingBuffer, stagingMem->handle, 0), "failed to bind staging buffer gpu memory");
 }
@@ -150,4 +157,45 @@ void GPUBuffer::ReleaseGPUMemory()
 
 		gpuMemoryAllocated = false;
 	}
+}
+
+
+DynamicPerFrameGPUBuffer::DynamicPerFrameGPUBuffer(GraphicsDevice* pDevice)
+{
+	this->pDevice = pDevice;
+}
+
+DynamicPerFrameGPUBuffer::~DynamicPerFrameGPUBuffer()
+{
+	for (int i = 0; i < buffers.size(); ++i)
+	{
+		buffers[i]->GPUBuffer->Destroy();
+		buffers[i]->pBufferOpFence = nullptr;
+	}
+}
+
+uint32_t DynamicPerFrameGPUBuffer::GetBufferCount() const
+{
+	return count;
+}
+
+void DynamicPerFrameGPUBuffer::Create(uint32_t bufferCount, uint32_t bufferSize, VkBufferUsageFlagBits bufferUsage)
+{
+	for (int i = 0; i < bufferCount; ++i)
+	{
+		auto buffer = std::make_shared<GPUBufferContainer>();
+		buffer->pBufferOpFence = nullptr;
+
+		buffer->GPUBuffer = new GPUBuffer(pDevice);
+		buffer->GPUBuffer->Create(bufferSize, bufferUsage, VK_SHARING_MODE_EXCLUSIVE, true);
+
+		buffers.push_back(buffer);
+	}
+}
+
+std::shared_ptr<GPUBufferContainer> DynamicPerFrameGPUBuffer::GetBuffer(uint32_t index) const
+{
+	assert(index <= (buffers.size() - 1));
+	
+	return buffers[index];
 }
