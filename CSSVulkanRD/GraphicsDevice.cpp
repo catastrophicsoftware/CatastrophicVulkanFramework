@@ -33,28 +33,18 @@ void GraphicsDevice::initVulkan()
 
     auto qfi = FindQueueFamilies(physicalGPU);
 
-    transferContext = std::make_shared<DeviceContext>(GPU, qfi.transferFamily.value(), true);
-    immediateContext = std::make_shared<DeviceContext>(GPU, qfi.graphicsFamily.value());
-
     transferContext->SetQueue(transferQueues[0]);
     immediateContext->SetQueue(primaryGraphicsQueue);
-
-    ImmediateContext = immediateContext;
-    TransferContext = transferContext;
 }
 
 void GraphicsDevice::cleanup()
 {
     WaitForGPUIdle();
 
-    immediateContext->Destroy();
-    transferContext->Destroy();
-
-    pShader->Destroy();
     cleanupSwapchain();
 
     vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
-    vkDestroyCommandPool(GPU, primaryCommandPool, nullptr);
+
     vkDestroyDevice(GPU, nullptr);
 
     if (enableValidationLayers) {
@@ -75,10 +65,14 @@ void GraphicsDevice::cleanupSwapchain()
     }
 
     vkDestroyFence(GPU, acquireImageFence, nullptr);
+
+    pShader->Destroy();
+
+    immediateContext->Destroy();
+    transferContext->Destroy();
+
     for (int i = 0; i < inflightFrames.size(); i++)
     {
-        vkFreeCommandBuffers(GPU, primaryCommandPool, 1, &inflightFrames[i]->cmdBuffer);
-        vkDestroyFence(GPU, inflightFrames[i]->cmdFence, nullptr);
         vkDestroySemaphore(GPU, inflightFrames[i]->imageAvailable, nullptr);
         vkDestroySemaphore(GPU, inflightFrames[i]->renderFinished, nullptr);
 
@@ -395,17 +389,17 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     colorBlending.blendConstants[2] = 0.0f; // Optional
     colorBlending.blendConstants[3] = 0.0f; // Optional
 
-    /*VkPushConstantRange pcr_vertex_transforms{};
+    VkPushConstantRange pcr_vertex_transforms{};
     pcr_vertex_transforms.offset = 0;
     pcr_vertex_transforms.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;*/
+    pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0; // Optional
     pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
+    pipelineLayoutInfo.pPushConstantRanges = &pcr_vertex_transforms;
 
     VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout!");
 
@@ -496,14 +490,14 @@ void GraphicsDevice::createCommandPools()
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalGPU);
 
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    transferContext = std::make_shared<DeviceContext>();
+    immediateContext = std::make_shared<DeviceContext>();
 
-    if (vkCreateCommandPool(GPU, &poolInfo, nullptr, &primaryCommandPool) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create command pool!");
-    }
+    immediateContext->Create(GPU, queueFamilyIndices.graphicsFamily.value());
+    transferContext->Create(GPU, queueFamilyIndices.transferFamily.value());
+
+    ImmediateContext = immediateContext;
+    TransferContext = transferContext;
 }
 
 void GraphicsDevice::createDescriptorSetLayout()
@@ -532,15 +526,16 @@ void GraphicsDevice::recreateSwapChain()
         glfwWaitEvents();
     }
 
-
     vkDeviceWaitIdle(GPU);
-    cleanupSwapchain();
 
+    cleanupSwapchain();
     createSwapChain();
     createImageViews();
     createRenderPass();
     createGraphicsPipeline();
     createFramebuffers();
+
+    createCommandPools(); //7-8-2020 to fix window min/maximization bug
 
     PrepareFrame();
 }
@@ -556,13 +551,13 @@ void GraphicsDevice::DrawFrame()
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &pActiveFrame->cmdBuffer;
+    submitInfo.pCommandBuffers = &pActiveFrame->cmdBuffer->handle;
     VkSemaphore signalSemaphores[] = { pActiveFrame->renderFinished };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    vkResetFences(GPU, 1, &pActiveFrame->cmdFence);
-    vkQueueSubmit(primaryGraphicsQueue, 1, &submitInfo, pActiveFrame->cmdFence);
+    vkResetFences(GPU, 1, &pActiveFrame->cmdBuffer->fence);
+    vkQueueSubmit(primaryGraphicsQueue, 1, &submitInfo, pActiveFrame->cmdBuffer->fence);
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -618,7 +613,7 @@ std::vector<const char*> GraphicsDevice::getRequiredExtensions()
 
 void GraphicsDevice::SetPushConstants(VkShaderStageFlags stage, size_t size, const void* pConstantData)
 {
-    vkCmdPushConstants(GetCurrentFrame()->cmdBuffer, pipelineLayout, stage, 0, size, pConstantData);
+    vkCmdPushConstants(GetCurrentFrame()->cmdBuffer->handle, pipelineLayout, stage, 0, size, pConstantData);
 }
 
 InflightFrame* GraphicsDevice::GetCurrentFrame()
@@ -713,11 +708,6 @@ std::shared_ptr<GPUMemoryManager> GraphicsDevice::GetMainGPUMemoryAllocator() co
     return memoryManager;
 }
 
-VkCommandPool GraphicsDevice::GetPrimaryCommandPool() const
-{
-    return primaryCommandPool;
-}
-
 void GraphicsDevice::PrimaryGraphicsQueueSubmit(VkSubmitInfo submitInfo, bool block)
 {
     vkQueueSubmit(primaryGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
@@ -751,7 +741,7 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer, &beginInfo));
+    VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer->handle, &beginInfo));
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -764,14 +754,14 @@ void GraphicsDevice::BeginRenderPass()
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
 
-    vkCmdBeginRenderPass(pActiveFrame->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(pActiveFrame->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdBeginRenderPass(pActiveFrame->cmdBuffer->handle, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(pActiveFrame->cmdBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 }
 
 void GraphicsDevice::EndRenderPass()
 {
-    vkCmdEndRenderPass(pActiveFrame->cmdBuffer);
-    VULKAN_CALL(vkEndCommandBuffer(pActiveFrame->cmdBuffer));
+    vkCmdEndRenderPass(pActiveFrame->cmdBuffer->handle);
+    VULKAN_CALL(vkEndCommandBuffer(pActiveFrame->cmdBuffer->handle));
 }
 
 void GraphicsDevice::WaitForGPUIdle()
@@ -951,7 +941,7 @@ InflightFrame* GraphicsDevice::GetAvailableFrame()
     {
         for (int i = 0; i < inflightFrames.size(); i++)
         {
-            VkResult status = vkGetFenceStatus(GPU, inflightFrames[i]->cmdFence);
+            VkResult status = vkGetFenceStatus(GPU, inflightFrames[i]->cmdBuffer->fence);
             if (status == VK_SUCCESS) //this command buffer is done executing on the GPU, ready for reuse
             {
                 return inflightFrames[i];
@@ -968,24 +958,13 @@ InflightFrame* GraphicsDevice::CreateInflightFrame()
 {
     InflightFrame* frame = new InflightFrame();
 
-    VkFenceCreateInfo fence{};
-    fence.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    VULKAN_CALL(vkCreateFence(GPU, &fence, nullptr, &frame->cmdFence));
-
     VkSemaphoreCreateInfo semaphore{};
     semaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
     VULKAN_CALL(vkCreateSemaphore(GPU, &semaphore, nullptr, &frame->imageAvailable));
     VULKAN_CALL(vkCreateSemaphore(GPU, &semaphore, nullptr, &frame->renderFinished));
 
-    VkCommandBufferAllocateInfo cmdBuf{};
-    cmdBuf.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmdBuf.commandPool = primaryCommandPool;
-    cmdBuf.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cmdBuf.commandBufferCount = 1;
-
-    VULKAN_CALL(vkAllocateCommandBuffers(GPU, &cmdBuf, &frame->cmdBuffer));
+    frame->cmdBuffer = ImmediateContext->GetCommandBuffer();
 
     return frame;
 }
@@ -1061,20 +1040,8 @@ bool QueueFamilyIndices::isComplete()
     return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 }
 
-DeviceContext::DeviceContext(VkDevice GPU,uint32_t queueFamily, bool transientCommandPool)
+DeviceContext::DeviceContext()
 {
-    this->GPU = GPU;
-
-    VkCommandPoolCreateInfo cpci{};
-    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cpci.queueFamilyIndex = queueFamily;
-
-    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-    if (transientCommandPool) 
-        cpci.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-
-    VULKAN_CALL_ERROR(vkCreateCommandPool(GPU, &cpci, nullptr, &commandPool), "failed to create command pool");
 }
 
 DeviceContext::~DeviceContext()
@@ -1092,14 +1059,14 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
     {
         for (CommandBuffer* buffer : commandBufferPool)
         {
-            if (vkGetFenceStatus(GPU, buffer->commandBufferFence) == VK_SUCCESS)
+            if (vkGetFenceStatus(GPU, buffer->fence) == VK_SUCCESS)
             {
                 if (begin)
                 {
                     VkCommandBufferBeginInfo beginInfo{};
                     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-                    VULKAN_CALL_ERROR(vkBeginCommandBuffer(buffer->commandBuffer, &beginInfo), "failed to begin command buffer");
+                    VULKAN_CALL_ERROR(vkBeginCommandBuffer(buffer->handle, &beginInfo), "failed to begin command buffer");
                 }
                 return buffer;
             }
@@ -1116,10 +1083,10 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer,bool block)
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit.commandBufferCount = 1;
-    submit.pCommandBuffers = &commandBuffer->commandBuffer;
+    submit.pCommandBuffers = &commandBuffer->handle;
 
-    vkResetFences(GPU, 1, &commandBuffer->commandBufferFence);
-    vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->commandBufferFence);
+    vkResetFences(GPU, 1, &commandBuffer->fence);
+    vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
 
     if (block) vkQueueWaitIdle(gpuQueue);
 }
@@ -1129,15 +1096,31 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* o
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit.commandBufferCount = 1;
-    submit.pCommandBuffers = &commandBuffer->commandBuffer;
-    vkResetFences(GPU, 1, &commandBuffer->commandBufferFence);
-    vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->commandBufferFence);
-    outPFence = &commandBuffer->commandBufferFence;
+    submit.pCommandBuffers = &commandBuffer->handle;
+    vkResetFences(GPU, 1, &commandBuffer->fence);
+    vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
+    outPFence = &commandBuffer->fence;
 }
 
 void DeviceContext::SetQueue(VkQueue queue)
 {
     gpuQueue = queue;
+}
+
+void DeviceContext::Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool)
+{
+    this->GPU = GPU;
+
+    VkCommandPoolCreateInfo cpci{};
+    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cpci.queueFamilyIndex = queueFamily;
+
+    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    if (transientCommandPool)
+        cpci.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+    VULKAN_CALL_ERROR(vkCreateCommandPool(GPU, &cpci, nullptr, &commandPool), "failed to create command pool");
 }
 
 void DeviceContext::Destroy()
@@ -1146,7 +1129,9 @@ void DeviceContext::Destroy()
 
     for (int i = 0; i < commandBufferPool.size(); ++i)
     {
-        vkDestroyFence(GPU, commandBufferPool[i]->commandBufferFence, nullptr);
+        vkDestroyFence(GPU, commandBufferPool[i]->fence, nullptr);
+
+        commandBufferPool.erase(commandBufferPool.begin() + i);
     }
 }
 
@@ -1160,11 +1145,11 @@ CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
     cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     cbai.commandPool = commandPool;
 
-    VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cbai, &newBuffer->commandBuffer), "failed to allocate command buffer");
+    VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cbai, &newBuffer->handle), "failed to allocate command buffer");
 
     VkFenceCreateInfo fci{};
     fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &newBuffer->commandBufferFence), "failed to create command buffer fence");
+    VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &newBuffer->fence), "failed to create command buffer fence");
     commandBufferPool.push_back(newBuffer);
 
     if (begin)
@@ -1172,7 +1157,7 @@ CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        VULKAN_CALL_ERROR(vkBeginCommandBuffer(newBuffer->commandBuffer, &beginInfo), "failed to begin command buffer");
+        VULKAN_CALL_ERROR(vkBeginCommandBuffer(newBuffer->handle, &beginInfo), "failed to begin command buffer");
 
         return newBuffer;
     }

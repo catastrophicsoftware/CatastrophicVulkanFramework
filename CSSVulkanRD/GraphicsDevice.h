@@ -47,10 +47,18 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
+struct CommandBuffer
+{
+    VkCommandBuffer handle;
+    VkFence fence;
+};
+
 struct InflightFrame
 {
-    VkCommandBuffer cmdBuffer;
-    VkFence         cmdFence;
+    //VkCommandBuffer cmdBuffer;
+    //VkFence         cmdFence;
+    CommandBuffer* cmdBuffer;
+
     VkSemaphore     imageAvailable;
     VkSemaphore     renderFinished;
     uint32_t        frameIndex;
@@ -58,16 +66,10 @@ struct InflightFrame
     void* pPerFrameData;
 };
 
-struct CommandBuffer
-{
-    VkCommandBuffer commandBuffer;
-    VkFence commandBufferFence;
-};
-
 class DeviceContext
 {
 public:
-    DeviceContext(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool=false);
+    DeviceContext();
     ~DeviceContext();
 
     CommandBuffer* GetCommandBuffer(bool begin=false);
@@ -76,14 +78,15 @@ public:
 
     void SetQueue(VkQueue queue);
 
+    void Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool = false);
     void Destroy();
+
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;
     CommandBuffer* createCommandBuffer(bool start);
 
-    VkQueue gpuQueue;
-
+    VkQueue  gpuQueue;
     VkDevice GPU;
 };
 
@@ -118,7 +121,7 @@ public:
 
     std::shared_ptr<GPUMemoryManager> GetMainGPUMemoryAllocator() const;
 
-    VkCommandPool GetPrimaryCommandPool() const;
+    //VkCommandPool GetPrimaryCommandPool() const; //deprecated
 
     void PrimaryGraphicsQueueSubmit(VkSubmitInfo submitInfo, bool block=false);
     void PrimaryTransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block=false);
@@ -151,7 +154,7 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
 
     VkQueue primaryGraphicsQueue; //this is queue index 0 of the GPUs main graphics queue family
-    VkCommandPool primaryCommandPool; //deprecated, replaced by ImmediateContext
+    //VkCommandPool primaryCommandPool; //deprecated, replaced by ImmediateContext
 
     std::vector<VkQueue> transferQueues;
     std::vector<VkQueue> computeQueues;

@@ -69,9 +69,9 @@ void GPUBuffer::Update(void* pData)
 		copyRegion.srcOffset = 0; // Optional
 		copyRegion.dstOffset = 0; // Optional
 		copyRegion.size = description.size;
-		vkCmdCopyBuffer(cmdBuf->commandBuffer, stagingBuffer, buffer, 1, &copyRegion);
+		vkCmdCopyBuffer(cmdBuf->handle, stagingBuffer, buffer, 1, &copyRegion);
 
-		vkEndCommandBuffer(cmdBuf->commandBuffer);
+		vkEndCommandBuffer(cmdBuf->handle);
 
 		pDevice->TransferContext->SubmitCommandBuffer(cmdBuf, true);
 		int x = 0;
@@ -80,10 +80,22 @@ void GPUBuffer::Update(void* pData)
 
 void* GPUBuffer::Map()
 {
-	if (!mapped)
+	if (!mapped && mappable)
 	{
 		void* pGPUMemoryRegion = nullptr;
 		VULKAN_CALL(vkMapMemory(GPU,gpuMemory->handle, 0, description.size, 0, &pGPUMemoryRegion));
+		mapped = true;
+		return pGPUMemoryRegion;
+	}
+	return nullptr;
+}
+
+void* GPUBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
+{
+	if (!mapped && mappable)
+	{
+		void* pGPUMemoryRegion = nullptr;
+		VULKAN_CALL(vkMapMemory(GPU, gpuMemory->handle, offset, size,0, &pGPUMemoryRegion));
 		mapped = true;
 		return pGPUMemoryRegion;
 	}

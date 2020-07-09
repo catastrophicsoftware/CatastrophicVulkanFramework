@@ -82,11 +82,11 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 
 		VkDeviceSize offsets[] = { 0 };
 		VkBuffer binding[] = { VertexBuffer->GetBuffer() };
-		vkCmdBindVertexBuffers(currentFrame->cmdBuffer, 0, 1,binding, offsets);
-		vkCmdBindIndexBuffer(currentFrame->cmdBuffer, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(currentFrame->cmdBuffer->handle, 0, 1,binding, offsets);
+		vkCmdBindIndexBuffer(currentFrame->cmdBuffer->handle, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
 		pGraphics->SetPushConstants(VK_SHADER_STAGE_VERTEX_BIT, sizeof(WorldViewProjection), &wvp);
-		vkCmdDrawIndexed(currentFrame->cmdBuffer, 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(currentFrame->cmdBuffer->handle, 6, 1, 0, 0, 0);
 
 		pGraphics->EndRenderPass(); //begin and end pass is the process of recording command buffer
 
