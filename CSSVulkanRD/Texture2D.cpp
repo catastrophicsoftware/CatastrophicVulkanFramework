@@ -1,6 +1,7 @@
 #include "Texture2D.h"
 #include "GraphicsDevice.h"
 #include "GPUBuffer.h"
+#include "DeviceContext.h"
 
 Texture2D::Texture2D(GraphicsDevice* pDevice) : GPUResource(pDevice)
 {

@@ -47,51 +47,51 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-struct CommandBuffer
-{
-    VkCommandBuffer handle;
-    VkFence fence;
-};
+//struct CommandBuffer
+//{
+//    VkCommandBuffer handle;
+//    VkFence fence;
+//};
+//
+//struct InflightFrame
+//{
+//    CommandBuffer* cmdBuffer;
+//
+//    VkSemaphore     imageAvailable;
+//    VkSemaphore     renderFinished;
+//    uint32_t        frameIndex;
+//
+//    void* pPerFrameData;
+//};
 
-struct InflightFrame
-{
-    //VkCommandBuffer cmdBuffer;
-    //VkFence         cmdFence;
-    CommandBuffer* cmdBuffer;
-
-    VkSemaphore     imageAvailable;
-    VkSemaphore     renderFinished;
-    uint32_t        frameIndex;
-
-    void* pPerFrameData;
-};
-
-class DeviceContext
-{
-public:
-    DeviceContext();
-    ~DeviceContext();
-
-    CommandBuffer* GetCommandBuffer(bool begin=false);
-    void SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block=false);
-    void SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence);
-
-    void SetQueue(VkQueue queue);
-
-    void Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool = false);
-    void Destroy();
-
-private:
-    VkCommandPool commandPool;
-    std::vector<CommandBuffer*> commandBufferPool;
-    CommandBuffer* createCommandBuffer(bool start);
-
-    VkQueue  gpuQueue;
-    VkDevice GPU;
-};
+//class DeviceContext
+//{
+//public:
+//    DeviceContext();
+//    ~DeviceContext();
+//
+//    CommandBuffer* GetCommandBuffer(bool begin=false);
+//    void SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block=false);
+//    void SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence);
+//
+//    void SetQueue(VkQueue queue);
+//
+//    void Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool = false);
+//    void Destroy();
+//
+//private:
+//    VkCommandPool commandPool;
+//    std::vector<CommandBuffer*> commandBufferPool;
+//    CommandBuffer* createCommandBuffer(bool start);
+//
+//    VkQueue  gpuQueue;
+//    VkDevice GPU;
+//};
 
 class Shader;
 class GPUMemoryManager;
+class DeviceContext;
+struct InflightFrame;
 
 class GraphicsDevice
 {
@@ -121,8 +121,6 @@ public:
 
     std::shared_ptr<GPUMemoryManager> GetMainGPUMemoryAllocator() const;
 
-    //VkCommandPool GetPrimaryCommandPool() const; //deprecated
-
     void PrimaryGraphicsQueueSubmit(VkSubmitInfo submitInfo, bool block=false);
     void PrimaryTransferQueueSubmit(uint32_t transferQueueIndex, VkSubmitInfo submitInfo, bool block=false);
 
@@ -133,6 +131,8 @@ public:
 
     std::shared_ptr<DeviceContext> ImmediateContext;
     std::shared_ptr<DeviceContext> TransferContext;
+
+    std::shared_ptr<DeviceContext> CreateDeviceContext(VkQueueFlagBits queueType, bool transient=false);
 private:
     Shader* pShader;
 
@@ -154,7 +154,6 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
 
     VkQueue primaryGraphicsQueue; //this is queue index 0 of the GPUs main graphics queue family
-    //VkCommandPool primaryCommandPool; //deprecated, replaced by ImmediateContext
 
     std::vector<VkQueue> transferQueues;
     std::vector<VkQueue> computeQueues;

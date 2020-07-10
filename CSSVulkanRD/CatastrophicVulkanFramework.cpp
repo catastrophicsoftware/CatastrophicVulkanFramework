@@ -3,6 +3,7 @@
 #include <windows.h>
 #include "GPUBuffer.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include "DeviceContext.h"
 
 void CatastrophicVulkanFrameworkApplication::Run()
 {

@@ -1,5 +1,6 @@
 #include "GPUBuffer.h"
 #include "GraphicsDevice.h"
+#include "DeviceContext.h"
 
 void GPUBuffer::Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode,bool dynamic, bool gpuAllocate)
 {
