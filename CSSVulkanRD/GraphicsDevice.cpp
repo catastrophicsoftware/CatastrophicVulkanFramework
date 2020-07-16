@@ -28,6 +28,7 @@ void GraphicsDevice::initVulkan()
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPools();
+    createDescriptorPool();
 
     GetGPUProperties();
     initializeMainMemoryManager();
@@ -80,6 +81,8 @@ void GraphicsDevice::cleanupSwapchain()
         delete inflightFrames[i];
         inflightFrames.erase(inflightFrames.begin() + i);
     }
+
+    vkDestroyDescriptorPool(GPU, descriptorPool, nullptr);
 
     vkDestroyPipeline(GPU, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
@@ -390,17 +393,15 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     colorBlending.blendConstants[2] = 0.0f; // Optional
     colorBlending.blendConstants[3] = 0.0f; // Optional
 
-    VkPushConstantRange pcr_vertex_transforms{};
-    pcr_vertex_transforms.offset = 0;
-    pcr_vertex_transforms.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;
+    //VkPushConstantRange pcr_vertex_transforms{}; //todo: implement push constant management system
+    //pcr_vertex_transforms.offset = 0;
+    //pcr_vertex_transforms.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    //pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0; // Optional
-    pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = &pcr_vertex_transforms;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
     VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout!");
 
@@ -501,23 +502,6 @@ void GraphicsDevice::createCommandPools()
     TransferContext = transferContext;
 }
 
-void GraphicsDevice::createDescriptorSetLayout()
-{
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &uboLayoutBinding;
-
-    VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &layoutInfo, nullptr, &descriptorSetLayout), "Error creating descriptor set layout");
-}
-
 void GraphicsDevice::recreateSwapChain()
 {
     int width = 0, height = 0;
@@ -537,6 +521,8 @@ void GraphicsDevice::recreateSwapChain()
     createFramebuffers();
 
     createCommandPools(); //7-8-2020 to fix window min/maximization bug
+    createDescriptorPool();
+    //todo: fire some kind of event so that the "user" code can re-create any gpu resources.
 
     PrepareFrame();
 }
@@ -653,6 +639,72 @@ void GraphicsDevice::CreateSurface() //possible weird shit
     VULKAN_CALL_ERROR(glfwCreateWindowSurface(instance, pApplicationWindow, nullptr, &surface), "error creating window surface");
 }
 
+void GraphicsDevice::createDescriptorPool()
+{
+    VkDescriptorPoolSize cbPoolSize{};
+    cbPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    cbPoolSize.descriptorCount = 16;
+
+    VkDescriptorPoolSize samplerPoolSize{};
+    samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerPoolSize.descriptorCount = 4;
+
+    std::array<VkDescriptorPoolSize, 2> poolSizes = { cbPoolSize, samplerPoolSize };
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+
+    VULKAN_CALL_ERROR(vkCreateDescriptorPool(GPU, &poolInfo, nullptr, &descriptorPool), "failed to create descriptor pool");
+}
+
+void GraphicsDevice::createDescriptorSetLayout() //TODO: integrate this with the descriptor registration system
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &layoutInfo, nullptr, &descriptorSetLayout), "Error creating descriptor set layout");
+}
+
+void GraphicsDevice::createDescriptorSets()
+{
+    //TODO: go through registered descriptors and
+    //TODO: eventially review nvidia presentation and move descriptor pool into device context
+
+    uint32_t numDescriptorSets = registeredDescriptors.size() * swapChainImages.size();
+
+    std::vector<VkDescriptorSetLayout> layouts(numDescriptorSets, descriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+    allocInfo.pSetLayouts = layouts.data();
+
+    descriptorSets.resize(swapChainImages.size());
+
+    VULKAN_CALL(vkAllocateDescriptorSets(GPU, &allocInfo, descriptorSets.data()));
+
+    //TODO: interface portion after this with "user" code
+}
+
+void GraphicsDevice::RegisterShaderDescriptor(ShaderDescriptor* pDescriptor) //todo: also move this to device context
+{
+    registeredDescriptors.push_back(pDescriptor);
+    //possibly do more here
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
     std::cerr << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
@@ -690,7 +742,7 @@ void GraphicsDevice::ResizeFramebuffer()
     framebufferResized = true;
 }
 
-void GraphicsDevice::PrepareFrame()
+int GraphicsDevice::PrepareFrame()
 {
     pActiveFrame = GetAvailableFrame();
     VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveFrame->imageAvailable, VK_NULL_HANDLE, &imageIndex);
@@ -702,6 +754,8 @@ void GraphicsDevice::PrepareFrame()
     }
     else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("Failed to acquire swap chain image!");
+
+    return imageIndex;
 }
 
 std::shared_ptr<GPUMemoryManager> GraphicsDevice::GetMainGPUMemoryAllocator() const
@@ -1069,127 +1123,3 @@ bool QueueFamilyIndices::isComplete()
 {
     return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 }
-
-//DeviceContext::DeviceContext()
-//{
-//}
-//
-//DeviceContext::~DeviceContext()
-//{
-//}
-//
-//CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
-//{
-//    if (commandBufferPool.size() == 0)
-//    {
-//        auto cb = createCommandBuffer(begin);
-//        return cb;
-//    }
-//    else
-//    {
-//        for (CommandBuffer* buffer : commandBufferPool)
-//        {
-//            if (vkGetFenceStatus(GPU, buffer->fence) == VK_SUCCESS)
-//            {
-//                if (begin)
-//                {
-//                    VkCommandBufferBeginInfo beginInfo{};
-//                    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-//                    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-//                    VULKAN_CALL_ERROR(vkBeginCommandBuffer(buffer->handle, &beginInfo), "failed to begin command buffer");
-//                }
-//                return buffer;
-//            }
-//        }
-//        
-//        //all command buffers are busy executing, new command buffer required
-//        auto cb = createCommandBuffer(begin);
-//        return cb;
-//    }
-//}
-//
-//void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer,bool block)
-//{
-//    VkSubmitInfo submit{};
-//    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-//    submit.commandBufferCount = 1;
-//    submit.pCommandBuffers = &commandBuffer->handle;
-//
-//    vkResetFences(GPU, 1, &commandBuffer->fence);
-//    vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
-//
-//    if (block) vkQueueWaitIdle(gpuQueue);
-//}
-//
-//void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence)
-//{
-//    VkSubmitInfo submit{};
-//    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-//    submit.commandBufferCount = 1;
-//    submit.pCommandBuffers = &commandBuffer->handle;
-//    vkResetFences(GPU, 1, &commandBuffer->fence);
-//    vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
-//    outPFence = &commandBuffer->fence;
-//}
-//
-//void DeviceContext::SetQueue(VkQueue queue)
-//{
-//    gpuQueue = queue;
-//}
-//
-//void DeviceContext::Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool)
-//{
-//    this->GPU = GPU;
-//
-//    VkCommandPoolCreateInfo cpci{};
-//    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-//    cpci.queueFamilyIndex = queueFamily;
-//
-//    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-//
-//    if (transientCommandPool)
-//        cpci.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-//
-//    VULKAN_CALL_ERROR(vkCreateCommandPool(GPU, &cpci, nullptr, &commandPool), "failed to create command pool");
-//}
-//
-//void DeviceContext::Destroy()
-//{
-//    vkDestroyCommandPool(GPU, commandPool, nullptr);
-//
-//    for (int i = 0; i < commandBufferPool.size(); ++i)
-//    {
-//        vkDestroyFence(GPU, commandBufferPool[i]->fence, nullptr);
-//
-//        commandBufferPool.erase(commandBufferPool.begin() + i);
-//    }
-//}
-//
-//CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
-//{
-//    CommandBuffer* newBuffer = new CommandBuffer();
-//
-//    VkCommandBufferAllocateInfo cbai{};
-//    cbai.commandBufferCount = 1;
-//    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-//    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-//    cbai.commandPool = commandPool;
-//
-//    VULKAN_CALL_ERROR(vkAllocateCommandBuffers(GPU, &cbai, &newBuffer->handle), "failed to allocate command buffer");
-//
-//    VkFenceCreateInfo fci{};
-//    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-//    VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &newBuffer->fence), "failed to create command buffer fence");
-//    commandBufferPool.push_back(newBuffer);
-//
-//    if (begin)
-//    {
-//        VkCommandBufferBeginInfo beginInfo{};
-//        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-//        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-//        VULKAN_CALL_ERROR(vkBeginCommandBuffer(newBuffer->handle, &beginInfo), "failed to begin command buffer");
-//
-//        return newBuffer;
-//    }
-//    return newBuffer;
-//}

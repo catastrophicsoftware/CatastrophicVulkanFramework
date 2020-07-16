@@ -153,6 +153,7 @@
     <ClCompile Include="GraphicsDevice.cpp" />
     <ClCompile Include="GPUBuffer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PipelineState.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
@@ -164,6 +165,7 @@
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="GPUBuffer.h" />
     <ClInclude Include="includes.h" />
+    <ClInclude Include="PipelineState.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Texture2D.h" />
   </ItemGroup>

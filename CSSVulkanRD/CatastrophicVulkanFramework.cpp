@@ -58,7 +58,7 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 	IndexBuffer->Update((void*)indices.data());
 
-	cbWVP->Create(sizeof(WorldViewProjection), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	cbWVP->Create(sizeof(WorldViewProjection)*3, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_SHARING_MODE_EXCLUSIVE, true);
 
 	WorldViewProjection wvp{};
@@ -71,11 +71,13 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 	wvp.projection[1][1] *= -1;
 	wvp.world = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
+	auto gpu_mem = cbWVP->Map(0, sizeof(WorldViewProjection));
+
 	while (!glfwWindowShouldClose(ApplicationWindow))
 	{
 		glfwPollEvents();
 
-		pGraphics->PrepareFrame();
+		int fIndex = pGraphics->PrepareFrame();
 		pGraphics->BeginRenderPass();
 		auto currentFrame = pGraphics->GetCurrentFrame();
 		//all resource / buffer / view / whatever binding for rendered objects using current graphics
@@ -86,7 +88,6 @@ void CatastrophicVulkanFrameworkApplication::MainLoop()
 		vkCmdBindVertexBuffers(currentFrame->cmdBuffer->handle, 0, 1,binding, offsets);
 		vkCmdBindIndexBuffer(currentFrame->cmdBuffer->handle, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
-		pGraphics->SetPushConstants(VK_SHADER_STAGE_VERTEX_BIT, sizeof(WorldViewProjection), &wvp);
 		vkCmdDrawIndexed(currentFrame->cmdBuffer->handle, 6, 1, 0, 0, 0);
 
 		pGraphics->EndRenderPass(); //begin and end pass is the process of recording command buffer

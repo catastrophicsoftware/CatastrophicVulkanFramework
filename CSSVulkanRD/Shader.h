@@ -24,12 +24,18 @@ public:
 	void Destroy(VkShaderStageFlags stage);
 	void Destroy();
 	std::shared_ptr<ShaderResource> GetShader(VkShaderStageFlagBits stage);
+
+	bool StageExists(VkShaderStageFlagBits stage);
 private:
 	VkDevice GPU;
 
 	std::shared_ptr<ShaderResource> VertexShader;
 	std::shared_ptr<ShaderResource> PixelShader;
 	std::shared_ptr<ShaderResource> ComputeShader;
+
+	uint32_t vertexStageExists : 1;
+	uint32_t fragmentStageExists : 1;
+	uint32_t computeStageExists : 1;
 
 	VkShaderModule createShader(const std::vector<char>& bytecode);
 };

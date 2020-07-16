@@ -47,46 +47,12 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-//struct CommandBuffer
-//{
-//    VkCommandBuffer handle;
-//    VkFence fence;
-//};
-//
-//struct InflightFrame
-//{
-//    CommandBuffer* cmdBuffer;
-//
-//    VkSemaphore     imageAvailable;
-//    VkSemaphore     renderFinished;
-//    uint32_t        frameIndex;
-//
-//    void* pPerFrameData;
-//};
-
-//class DeviceContext
-//{
-//public:
-//    DeviceContext();
-//    ~DeviceContext();
-//
-//    CommandBuffer* GetCommandBuffer(bool begin=false);
-//    void SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block=false);
-//    void SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence);
-//
-//    void SetQueue(VkQueue queue);
-//
-//    void Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool = false);
-//    void Destroy();
-//
-//private:
-//    VkCommandPool commandPool;
-//    std::vector<CommandBuffer*> commandBufferPool;
-//    CommandBuffer* createCommandBuffer(bool start);
-//
-//    VkQueue  gpuQueue;
-//    VkDevice GPU;
-//};
+struct ShaderDescriptor
+{
+    VkDescriptorType      type;
+    VkShaderStageFlagBits shaderStage;
+    void* pResource; //HACK!
+};
 
 class Shader;
 class GPUMemoryManager;
@@ -113,7 +79,7 @@ public:
 
     void WaitForGPUIdle();
     void DrawFrame();
-    void PrepareFrame();
+    int PrepareFrame();
 
     void SetPushConstants(VkShaderStageFlags flags, size_t size, const void* pConstantData);
 
@@ -133,8 +99,10 @@ public:
     std::shared_ptr<DeviceContext> TransferContext;
 
     std::shared_ptr<DeviceContext> CreateDeviceContext(VkQueueFlagBits queueType, bool transient=false);
+
+    void RegisterShaderDescriptor(ShaderDescriptor* pDescriptor);
 private:
-    Shader* pShader;
+    Shader* pShader; //refactor
 
     GLFWwindow* pApplicationWindow;
 
@@ -179,9 +147,12 @@ private:
     void recreateSwapChain();
     void cleanupSwapchain();
     void CreateSurface();
+    void createDescriptorPool();
+    void createDescriptorSets();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void setupDebugMessenger();
+
 
     std::vector<const char*> getRequiredExtensions();
 
@@ -201,7 +172,6 @@ private:
     bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU);
     void PickPhysicalGPU();
 
-
     SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice physicalGPU);
     VkSurfaceFormatKHR      ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR        ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
@@ -211,6 +181,10 @@ private:
     std::vector<VkImageView>     swapChainImageViews;
     std::vector<VkFramebuffer>   swapChainFramebuffers;
     //----
+
+    VkDescriptorPool descriptorPool; //eventually move this into DeviceContext
+    std::vector<ShaderDescriptor*> registeredDescriptors;
+    std::vector<VkDescriptorSet> descriptorSets;
 
     size_t currentFrame = 0;
     bool framebufferResized = false;

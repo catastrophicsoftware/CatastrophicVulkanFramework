@@ -23,6 +23,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 			VertexShader->module = module;
 			VertexShader->stage = stage;
 			VertexShader->bytecode = code.data(); //unsure now necessary it will be to keep cpu copy of shader bytecode indefinitely
+			vertexStageExists = true;
 
 			break;
 		}
@@ -36,6 +37,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 			PixelShader->module = module;
 			PixelShader->stage = stage;
 			PixelShader->bytecode = code.data(); //unsure now necessary it will be to keep cpu copy of shader bytecode indefinitely
+			fragmentStageExists = true;
 
 			break;
 		}
@@ -49,6 +51,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 			ComputeShader->module = module;
 			ComputeShader->stage = stage;
 			ComputeShader->bytecode = code.data(); //unsure now necessary it will be to keep cpu copy of shader bytecode indefinitely
+			computeStageExists = true;
 
 			break;
 		}
@@ -127,6 +130,29 @@ std::shared_ptr<ShaderResource> Shader::GetShader(VkShaderStageFlagBits stage)
 			break;
 		}
 	}
+}
+
+bool Shader::StageExists(VkShaderStageFlagBits stage)
+{
+	switch (stage)
+	{
+		case VK_SHADER_STAGE_VERTEX_BIT:
+		{
+			return static_cast<bool>(vertexStageExists);
+			break;
+		}
+		case VK_SHADER_STAGE_FRAGMENT_BIT:
+		{
+			return static_cast<bool>(fragmentStageExists);
+			break;
+		}
+		case VK_SHADER_STAGE_COMPUTE_BIT:
+		{
+			return static_cast<bool>(computeStageExists);
+			break;
+		}
+	}
+	return false;
 }
 
 VkShaderModule Shader::createShader(const std::vector<char>& bytecode)
