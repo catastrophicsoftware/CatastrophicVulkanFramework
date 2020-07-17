@@ -23,7 +23,7 @@
     <ProjectGuid>{ED9B1394-A1FC-44F9-BED9-B5E37796D899}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>CSSVulkanRD</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

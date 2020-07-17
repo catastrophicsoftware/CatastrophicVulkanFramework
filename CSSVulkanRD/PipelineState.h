@@ -22,7 +22,7 @@ struct BlendState
 class PipelineState
 {
 public:
-	PipelineState(VkDevice gpu);
+	PipelineState(VkDevice gpu, uint32_t numFramebuffers);
 	~PipelineState();
 
 	void SetShader(Shader* pShader);
@@ -35,16 +35,17 @@ public:
 	void SetPushConstantRange(VkPushConstantRange range);
 	void SetPrimitiveTopology(VkPrimitiveTopology topology);
 	void SetPrimitiveRestartEnable(VkBool32 primitiveRestartEnabled);
-	void SetColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState);
+	//void SetColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState); redundant with BlendState structure member
 	void SetRenderPass(VkRenderPass pass);
-
 
 	VkDescriptorSet GetDescriptorSet(uint32_t index);
 	void RegisterDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding binding);
 	void SetDescriptorPool(VkDescriptorPool pool); //watch out for this
-
+	void UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
 
 	void Build();
+	VkPipeline GetPipeline() const;
+	VkPipelineLayout GetPipelineLayout() const; //probably replace this with something better
 private:
 	VkPipeline pipeline;
 	Shader* pShader;
@@ -55,6 +56,7 @@ private:
 	std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings;
 
 	void createDescriptorSetLayout();
+	void createDescriptorSets();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -71,7 +73,7 @@ private:
 
 	BlendState blendState;
 
-	VkPipelineColorBlendStateCreateInfo colorBlendState;
+	//VkPipelineColorBlendStateCreateInfo colorBlendState;
 
 	VkPipelineLayoutCreateInfo  pipelineLayoutInfo;
 	VkPipelineLayout pipelineLayout;
@@ -86,4 +88,5 @@ private:
 	VkDevice GPU;
 
 	bool dirty;
+	uint32_t numFramebuffers;
 };

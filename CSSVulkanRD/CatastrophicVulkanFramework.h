@@ -12,9 +12,11 @@ protected:
 	virtual void Update() = 0;
 	virtual void Render() = 0;
 	virtual void DestroyResources() = 0;
-private:
+
 	GraphicsDevice* pGraphics;
+private:
 	GLFWwindow* ApplicationWindow;
+
 	uint32 WindowWidth;
 	uint32 WindowHeight;
 	bool Fullscreen;

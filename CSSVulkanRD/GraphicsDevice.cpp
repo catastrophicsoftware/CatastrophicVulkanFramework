@@ -3,6 +3,7 @@
 #include "Shader.h"
 #include "GPUMemoryManager.h"
 #include "DeviceContext.h"
+#include "PipelineState.h"
 
 GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
@@ -25,7 +26,8 @@ void GraphicsDevice::initVulkan()
     createSwapChain();
     createImageViews();
     createRenderPass();
-    createGraphicsPipeline();
+    createDescriptorSetLayout();
+    //createGraphicsPipeline();
     createFramebuffers();
     createCommandPools();
     createDescriptorPool();
@@ -322,7 +324,7 @@ void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be re
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 
     auto bindingDesc = VertexPositionColor::GetBindingDescription();
-    auto attrDesc = VertexPositionColor::GetAttributeDescriptions();
+    auto attrDesc = VertexPositionColor::GetVertexAttributeDescriptions();
 
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
@@ -639,7 +641,7 @@ void GraphicsDevice::CreateSurface() //possible weird shit
     VULKAN_CALL_ERROR(glfwCreateWindowSurface(instance, pApplicationWindow, nullptr, &surface), "error creating window surface");
 }
 
-void GraphicsDevice::createDescriptorPool()
+void GraphicsDevice::createDescriptorPool() //deprecated
 {
     VkDescriptorPoolSize cbPoolSize{};
     cbPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -660,7 +662,7 @@ void GraphicsDevice::createDescriptorPool()
     VULKAN_CALL_ERROR(vkCreateDescriptorPool(GPU, &poolInfo, nullptr, &descriptorPool), "failed to create descriptor pool");
 }
 
-void GraphicsDevice::createDescriptorSetLayout() //TODO: integrate this with the descriptor registration system
+void GraphicsDevice::createDescriptorSetLayout() //deprecated
 {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
@@ -677,7 +679,7 @@ void GraphicsDevice::createDescriptorSetLayout() //TODO: integrate this with the
     VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &layoutInfo, nullptr, &descriptorSetLayout), "Error creating descriptor set layout");
 }
 
-void GraphicsDevice::createDescriptorSets()
+void GraphicsDevice::createDescriptorSets() //deprecated
 {
     //TODO: go through registered descriptors and
     //TODO: eventially review nvidia presentation and move descriptor pool into device context
@@ -699,11 +701,48 @@ void GraphicsDevice::createDescriptorSets()
     //TODO: interface portion after this with "user" code
 }
 
-void GraphicsDevice::RegisterShaderDescriptor(ShaderDescriptor* pDescriptor) //todo: also move this to device context
+void GraphicsDevice::RegisterShaderDescriptor(ShaderDescriptor* pDescriptor) //deprecated
 {
     registeredDescriptors.push_back(pDescriptor);
     //possibly do more here
 }
+
+void GraphicsDevice::SetPipelineState(PipelineState* pState)
+{
+    pPipelineState = pState;
+}
+
+VkDescriptorSet GraphicsDevice::GetPipelineDescriptorSet(uint32_t index)
+{
+    return pPipelineState->GetDescriptorSet(index);
+}
+
+uint32_t GraphicsDevice::GetSwapchainFramebufferCount() const
+{
+    return swapChainFramebuffers.size();
+}
+
+VkExtent2D GraphicsDevice::GetSwapchainExtent() const
+{
+    return swapChainExtent;
+}
+
+VkRenderPass GraphicsDevice::GetRenderPass() const
+{
+    return renderPass;
+}
+
+VkDescriptorPool GraphicsDevice::GetDescriptorPool() const
+{
+    return descriptorPool;
+}
+
+PipelineState* GraphicsDevice::GetPipelineState() const
+{
+    return pPipelineState;
+}
+
+
 
 VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
@@ -839,7 +878,8 @@ void GraphicsDevice::BeginRenderPass()
     renderPassInfo.pClearValues = &clearColor;
 
     vkCmdBeginRenderPass(pActiveFrame->cmdBuffer->handle, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(pActiveFrame->cmdBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    vkCmdBindPipeline(pActiveFrame->cmdBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipelineState->GetPipeline());
 }
 
 void GraphicsDevice::EndRenderPass()
@@ -1093,7 +1133,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
-std::array<VkVertexInputAttributeDescription, 2> VertexPositionColor::GetAttributeDescriptions()
+std::array<VkVertexInputAttributeDescription, 2> VertexPositionColor::GetVertexAttributeDescriptions()
 {
     std::array<VkVertexInputAttributeDescription, 2> attrDescriptions;
     attrDescriptions[0].binding = 0;

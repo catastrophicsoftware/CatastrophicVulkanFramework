@@ -1,7 +1,7 @@
 #include "PipelineState.h"
 #include "Shader.h"
 
-PipelineState::PipelineState(VkDevice gpu)
+PipelineState::PipelineState(VkDevice gpu, uint32_t numFramebuffers)
 {
 	GPU = gpu;
 
@@ -9,17 +9,20 @@ PipelineState::PipelineState(VkDevice gpu)
 	vertexInputInfo = {};
 	pipelineInfo = {};
 	pipelineLayoutInfo = {};
-	colorBlendState = {};
+	//colorBlendState = {};
 	descriptorSetLayoutCreateInfo = {};
 
+	this->numFramebuffers = numFramebuffers;
+	descriptorSets.resize(numFramebuffers);
+
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	rasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	//colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
 	dirty = false;
@@ -124,11 +127,11 @@ void PipelineState::SetPrimitiveRestartEnable(VkBool32 primitiveRestartEnabled)
 	dirty = true;
 }
 
-void PipelineState::SetColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState)
-{
-	this->colorBlendState = colorBlendState;
-	dirty = true;
-}
+//void PipelineState::SetColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState)
+//{
+//	this->colorBlendState = colorBlendState;
+//	dirty = true;
+//}
 
 void PipelineState::SetRenderPass(VkRenderPass pass)
 {
@@ -149,15 +152,40 @@ void PipelineState::RegisterDescriptorSetLayoutBinding(VkDescriptorSetLayoutBind
 	dirty = true;
 }
 
+void PipelineState::SetDescriptorPool(VkDescriptorPool pool)
+{
+	descriptorPool = pool;
+}
+
+void PipelineState::UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
+{
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+
+	VkDescriptorBufferInfo bufferInfo{};
+	bufferInfo.buffer = gpuBuffer;
+	bufferInfo.offset = bindOffset;
+	bufferInfo.range = bindSize;
+
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0; //what the fuck is this
+	write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write.descriptorCount = 1;
+	write.pBufferInfo = &bufferInfo;
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
 void PipelineState::Build()
 {
 	if (dirty)
 	{
-		pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineInfo.stageCount = shaderStages.size();
 		pipelineInfo.pStages = shaderStages.data();
 		
-		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputData.vertexInputAttributeDescriptions.size());
 		vertexInputInfo.pVertexBindingDescriptions = &vertexInputData.vertexBindingDesc;
@@ -174,12 +202,23 @@ void PipelineState::Build()
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizerState;
 		pipelineInfo.pMultisampleState = &multisampleState;
-		pipelineInfo.pColorBlendState = &colorBlendState;
+		pipelineInfo.pColorBlendState = &blendState.blendState;
 
 		createDescriptorSetLayout(); //at this point build the descriptor set layout from descriptor set bindings
+		createDescriptorSets();
 
-		pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
-		pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+		if (pushConstantRanges.size() > 0)
+		{
+			pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
+			pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+		}
+		else
+		{
+			pipelineLayoutInfo.pushConstantRangeCount = 0;
+			pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		}
+
+
 		pipelineLayoutInfo.setLayoutCount = 1; //currently 1 descriptor set supported
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "failed to create graphics pipeline layout");
@@ -194,6 +233,16 @@ void PipelineState::Build()
 	}
 }
 
+VkPipeline PipelineState::GetPipeline() const
+{
+	return pipeline;
+}
+
+VkPipelineLayout PipelineState::GetPipelineLayout() const
+{
+	return pipelineLayout;
+}
+
 void PipelineState::createDescriptorSetLayout()
 {
 	descriptorSetLayoutCreateInfo.bindingCount = descriptorSetLayoutBindings.size();
@@ -201,6 +250,18 @@ void PipelineState::createDescriptorSetLayout()
 	VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout), "failed to create descriptor set layout");
 }
 
+void PipelineState::createDescriptorSets()
+{
+	std::vector<VkDescriptorSetLayout> layouts(numFramebuffers, descriptorSetLayout);
+
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = numFramebuffers;
+	allocInfo.pSetLayouts = layouts.data();
+
+	VULKAN_CALL_ERROR(vkAllocateDescriptorSets(GPU, &allocInfo, descriptorSets.data()), "failed to allocate descriptor sets");
+}
 
 VertexInputData::VertexInputData()
 {

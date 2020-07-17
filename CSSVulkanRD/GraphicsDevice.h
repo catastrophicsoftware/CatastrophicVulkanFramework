@@ -12,7 +12,7 @@ struct VertexPositionColor
     glm::vec3 color;
 
     static VkVertexInputBindingDescription GetBindingDescription();
-    static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
+    static std::array<VkVertexInputAttributeDescription,2> GetVertexAttributeDescriptions();
 };
 
 struct VertexPositionTexture
@@ -58,6 +58,7 @@ class Shader;
 class GPUMemoryManager;
 class DeviceContext;
 struct InflightFrame;
+class PipelineState;
 
 class GraphicsDevice
 {
@@ -100,7 +101,20 @@ public:
 
     std::shared_ptr<DeviceContext> CreateDeviceContext(VkQueueFlagBits queueType, bool transient=false);
 
-    void RegisterShaderDescriptor(ShaderDescriptor* pDescriptor);
+    void RegisterShaderDescriptor(ShaderDescriptor* pDescriptor); //deprecated
+
+    void SetPipelineState(PipelineState* pState);
+
+    VkDescriptorSet GetPipelineDescriptorSet(uint32_t index);
+
+    uint32_t GetSwapchainFramebufferCount() const;
+    VkExtent2D GetSwapchainExtent() const;
+
+    VkRenderPass GetRenderPass() const;
+
+    VkDescriptorPool GetDescriptorPool() const; //deprecated soon
+
+    PipelineState* GetPipelineState() const;
 private:
     Shader* pShader; //refactor
 
@@ -117,9 +131,11 @@ private:
     VkSwapchainKHR swapChain;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
-    VkPipeline graphicsPipeline;
 
-    VkDescriptorSetLayout descriptorSetLayout;
+    VkPipeline graphicsPipeline;
+    PipelineState* pPipelineState; //deprecated
+
+    VkDescriptorSetLayout descriptorSetLayout; //deprecated
 
     VkQueue primaryGraphicsQueue; //this is queue index 0 of the GPUs main graphics queue family
 
