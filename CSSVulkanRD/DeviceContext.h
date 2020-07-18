@@ -37,6 +37,8 @@ public:
 
     void RegisterDescriptorPoolSize(VkDescriptorPoolSize poolSize);
     void CreateDescriptorPool(uint32_t maxDescriptorSets);
+
+    VkDescriptorPool GetDescriptorPool() const;
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;

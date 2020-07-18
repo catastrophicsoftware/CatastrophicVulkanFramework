@@ -82,6 +82,9 @@ void DeviceContext::Create(VkDevice GPU, uint32_t queueFamily, bool transientCom
         cpci.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 
     VULKAN_CALL_ERROR(vkCreateCommandPool(GPU, &cpci, nullptr, &commandPool), "failed to create command pool");
+
+    //CreateDescriptorPool(32); //can't call this here because descriptor pool specificications
+    //and sizes have not been registered, do not fall into this trap again, dumbass.
 }
 
 void DeviceContext::Destroy()
@@ -91,7 +94,6 @@ void DeviceContext::Destroy()
     for (int i = 0; i < commandBufferPool.size(); ++i)
     {
         vkDestroyFence(GPU, commandBufferPool[i]->fence, nullptr);
-
         commandBufferPool.erase(commandBufferPool.begin() + i);
     }
 }
@@ -112,6 +114,11 @@ void DeviceContext::CreateDescriptorPool(uint32_t maxDescriptorSets)
     this->maxDescriptorSets = maxDescriptorSets;
 
     VULKAN_CALL_ERROR(vkCreateDescriptorPool(GPU, &poolInfo, nullptr, &descriptorPool), "failed to create descriptor pool");
+}
+
+VkDescriptorPool DeviceContext::GetDescriptorPool() const
+{
+    return descriptorPool;
 }
 
 CommandBuffer* DeviceContext::createCommandBuffer(bool begin)

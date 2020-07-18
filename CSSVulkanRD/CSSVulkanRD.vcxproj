@@ -156,6 +156,7 @@
     <ClCompile Include="PipelineState.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="vmaImpl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CatastrophicVulkanFramework.h" />
