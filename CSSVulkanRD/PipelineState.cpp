@@ -243,6 +243,14 @@ VkPipelineLayout PipelineState::GetPipelineLayout() const
 	return pipelineLayout;
 }
 
+void PipelineState::Destroy()
+{
+	vkDestroyPipeline(GPU, pipeline, nullptr);
+	vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
+	vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
+	dirty = true;
+}
+
 void PipelineState::createDescriptorSetLayout()
 {
 	descriptorSetLayoutCreateInfo.bindingCount = descriptorSetLayoutBindings.size();

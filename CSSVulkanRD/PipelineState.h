@@ -46,6 +46,8 @@ public:
 	void Build();
 	VkPipeline GetPipeline() const;
 	VkPipelineLayout GetPipelineLayout() const; //probably replace this with something better
+
+	void Destroy();
 private:
 	VkPipeline pipeline;
 	Shader* pShader;
