@@ -21,7 +21,6 @@ public:
 
 	VkBuffer GetBuffer() const;
 
-	void ReleaseGPUMemory();
 	void AllocateGPUMemory();
 
 	bool IsDynamic() const;
@@ -33,11 +32,17 @@ private:
 	void createStagingBuffer();
 
 	GraphicsDevice* pDevice;
+	std::shared_ptr<GPUMemoryManager> pAllocator;
 
 	bool dynamic;
 
-	GPUMemoryAllocation* gpuMemory;
-	GPUMemoryAllocation* stagingMem;
+	//GPUMemoryAllocation* gpuMemory;
+	//GPUMemoryAllocation* stagingMem;
+
+	VmaAllocation gpuMemory;
+	VmaAllocation gpuStagingMemory;
+	VmaAllocationCreateInfo allocInfo;
+	VmaAllocationCreateInfo stagingAllocInfo;
 };
 
 

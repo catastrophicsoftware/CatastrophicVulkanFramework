@@ -1,7 +1,8 @@
 #include "GPUMemoryManager.h"
 #include "includes.h"
+#include "memory-allocator/src/vk_mem_alloc.h"
 
-GPUMemoryManager::GPUMemoryManager(VkPhysicalDevice device, VkDevice gpu)
+GPUMemoryManager::GPUMemoryManager(VkInstance instance, VkPhysicalDevice device, VkDevice gpu)
 {
 	physicalDevice = device;
 	GPU = gpu;
@@ -9,6 +10,8 @@ GPUMemoryManager::GPUMemoryManager(VkPhysicalDevice device, VkDevice gpu)
     gpuMemoryUsed = 0;
     poolCount = 0;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+    InitializeVMA(physicalDevice, GPU, instance);
 }
 
 GPUMemoryManager::~GPUMemoryManager()
@@ -233,6 +236,13 @@ GPUMemoryAllocation* GPUMemoryManager::PoolAllocateGPUMemory(VkMemoryRequirement
     }
 }
 
+VkBuffer GPUMemoryManager::AllocateGPUBuffer(VkBufferCreateInfo createInfo,const VmaAllocationCreateInfo* allocInfo, VmaAllocation* pAlloc)
+{
+    VkBuffer newBuffer;
+    VULKAN_CALL_ERROR(vmaCreateBuffer(memoryAllocator, &createInfo, allocInfo, &newBuffer, pAlloc, nullptr), "failed to create gpu memory allocation");
+    return newBuffer;
+}
+
 void GPUMemoryManager::ReleaseGPUMemory(uint32_t allocID)
 {
     THREAD_LOCK(lock);
@@ -253,6 +263,33 @@ void GPUMemoryManager::ReleaseAll()
     {
         ReleaseGPUMemory(allocationList[i]->allocID);
     }
+}
+
+void GPUMemoryManager::InitializeVMA(VkPhysicalDevice phsycalDevice, VkDevice GPU, VkInstance instance)
+{
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.device = GPU;
+    allocatorInfo.physicalDevice = physicalDevice;
+    allocatorInfo.instance = instance;
+
+    vmaCreateAllocator(&allocatorInfo, &memoryAllocator);
+}
+
+void* GPUMemoryManager::VMA_MapMemory(VmaAllocation allocation)
+{
+    void* pGPUMemoryRegion = nullptr;
+    VULKAN_CALL_ERROR(vmaMapMemory(memoryAllocator, allocation, &pGPUMemoryRegion), "failed to map gpu memory");
+    return pGPUMemoryRegion;
+}
+
+void GPUMemoryManager::VMA_UnmapMemory(VmaAllocation allocation)
+{
+    vmaUnmapMemory(memoryAllocator, allocation);
+}
+
+void GPUMemoryManager::VMA_FreeMemory(VmaAllocation allocation)
+{
+    vmaFreeMemory(memoryAllocator, allocation);
 }
 
 uint32_t GPUMemoryManager::getAllocID()

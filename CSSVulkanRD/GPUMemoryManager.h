@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <mutex>
+#include "memory-allocator/src/vk_mem_alloc.h"
 
 struct UsedRange
 {
@@ -35,18 +36,26 @@ struct GPUMemoryPool
 
 class GraphicsDevice;
 
+
 class GPUMemoryManager
 {
 public:
-	GPUMemoryManager(VkPhysicalDevice device, VkDevice gpu);
+	GPUMemoryManager(VkInstance instance, VkPhysicalDevice device, VkDevice gpu);
 	~GPUMemoryManager();
 
 	GPUMemoryAllocation* AllocateGPUMemory(VkMemoryRequirements requiredAlloc, VkMemoryPropertyFlags memoryPropertyFlags);
 	GPUMemoryAllocation* PoolAllocateGPUMemory(VkMemoryRequirements allocReq, VkMemoryPropertyFlags memoryPropertyFlags);
 
+	VkBuffer AllocateGPUBuffer(VkBufferCreateInfo createInfo, const VmaAllocationCreateInfo* allocInfo, VmaAllocation* pAlloc);
 
 	void ReleaseGPUMemory(uint32_t allocID);
 	void ReleaseAll();
+
+	void InitializeVMA(VkPhysicalDevice phsycaiDevice, VkDevice GPU, VkInstance instance);
+
+	void* VMA_MapMemory(VmaAllocation allocation);
+	void VMA_UnmapMemory(VmaAllocation allocation);
+	void VMA_FreeMemory(VmaAllocation allocation);
 private:
 	std::vector<GPUMemoryAllocation*> allocationList;
 	uint32_t gpuMemoryUsed;
@@ -66,4 +75,6 @@ private:
 	VkDevice GPU;
 
 	uint32_t FindCompatibleGPUMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memProperties);
+
+	VmaAllocator memoryAllocator;
 };
