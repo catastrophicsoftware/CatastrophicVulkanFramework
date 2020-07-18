@@ -39,7 +39,7 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
     }
 }
 
-void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block)
+void DeviceContext::Submit(CommandBuffer* commandBuffer)
 {
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -49,10 +49,10 @@ void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block
     vkResetFences(GPU, 1, &commandBuffer->fence);
     vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
 
-    if (block) vkQueueWaitIdle(gpuQueue);
+    vkWaitForFences(GPU, 1, &commandBuffer->fence, VK_TRUE, INFINITY);
 }
 
-void DeviceContext::SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence)
+void DeviceContext::Submit(CommandBuffer* commandBuffer, VkFence* outPFence)
 {
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -94,6 +94,24 @@ void DeviceContext::Destroy()
 
         commandBufferPool.erase(commandBufferPool.begin() + i);
     }
+}
+
+void DeviceContext::RegisterDescriptorPoolSize(VkDescriptorPoolSize poolSize)
+{
+    descriptorPoolDescriptions.push_back(poolSize);
+}
+
+void DeviceContext::CreateDescriptorPool(uint32_t maxDescriptorSets)
+{
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = descriptorPoolDescriptions.size();
+    poolInfo.pPoolSizes = descriptorPoolDescriptions.data();
+    poolInfo.maxSets = maxDescriptorSets;
+
+    this->maxDescriptorSets = maxDescriptorSets;
+
+    VULKAN_CALL_ERROR(vkCreateDescriptorPool(GPU, &poolInfo, nullptr, &descriptorPool), "failed to create descriptor pool");
 }
 
 CommandBuffer* DeviceContext::createCommandBuffer(bool begin)

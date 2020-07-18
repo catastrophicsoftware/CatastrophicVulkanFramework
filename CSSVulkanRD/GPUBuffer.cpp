@@ -74,7 +74,7 @@ void GPUBuffer::Update(void* pData)
 
 		vkEndCommandBuffer(cmdBuf->handle);
 
-		pDevice->TransferContext->SubmitCommandBuffer(cmdBuf, true);
+		pDevice->TransferContext->Submit(cmdBuf);
 		int x = 0;
 	}
 }

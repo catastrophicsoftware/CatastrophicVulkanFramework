@@ -11,7 +11,7 @@ struct CommandBuffer
 
 struct InflightFrame
 {
-    CommandBuffer* cmdBuffer;
+    CommandBuffer*  cmdBuffer;
 
     VkSemaphore     imageAvailable;
     VkSemaphore     renderFinished;
@@ -27,14 +27,16 @@ public:
     ~DeviceContext();
 
     CommandBuffer* GetCommandBuffer(bool begin = false);
-    void SubmitCommandBuffer(CommandBuffer* commandBuffer, bool block = false);
-    void SubmitCommandBuffer(CommandBuffer* commandBuffer, VkFence* outPFence);
+    void Submit(CommandBuffer* commandBuffer);
+    void Submit(CommandBuffer* commandBuffer, VkFence* outPFence);
 
     void SetQueue(VkQueue queue);
 
     void Create(VkDevice GPU, uint32_t queueFamily, bool transientCommandPool = false);
     void Destroy();
 
+    void RegisterDescriptorPoolSize(VkDescriptorPoolSize poolSize);
+    void CreateDescriptorPool(uint32_t maxDescriptorSets);
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;
@@ -42,6 +44,12 @@ private:
 
     VkQueue  gpuQueue;
     VkDevice GPU;
+
+
+    std::vector<VkDescriptorPoolSize> descriptorPoolDescriptions;
+    VkDescriptorPool descriptorPool;
+    uint32_t maxDescriptorSets;
+    uint32_t numAllocatedDescriptorSets;
 
     std::mutex _lock;
 };

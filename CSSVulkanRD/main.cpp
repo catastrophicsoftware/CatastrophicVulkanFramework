@@ -229,4 +229,7 @@ void app::Render()
 
 void app::DestroyResources()
 {
+    //VertexBuffer->Destroy();
+    //IndexBuffer->Destroy();
+    //cbWVP->Destroy();
 }

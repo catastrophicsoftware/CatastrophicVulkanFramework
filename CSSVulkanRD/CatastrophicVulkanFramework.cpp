@@ -18,7 +18,7 @@ void CatastrophicVulkanFrameworkApplication::Run()
 
 void CatastrophicVulkanFrameworkApplication::Shutdown()
 {
-	pGraphics->ShutdownVulkan();
+	DestroyResources();
 	glfwDestroyWindow(ApplicationWindow);
 	glfwTerminate();
 }

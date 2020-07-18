@@ -47,7 +47,7 @@ void GraphicsDevice::cleanup()
 
     cleanupSwapchain();
 
-    vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
+    //vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
 
     vkDestroyDevice(GPU, nullptr);
 
@@ -70,7 +70,7 @@ void GraphicsDevice::cleanupSwapchain()
 
     vkDestroyFence(GPU, acquireImageFence, nullptr);
 
-    pShader->Destroy();
+    //pShader->Destroy();
 
     immediateContext->Destroy();
     transferContext->Destroy();
@@ -741,7 +741,6 @@ PipelineState* GraphicsDevice::GetPipelineState() const
 {
     return pPipelineState;
 }
-
 
 
 VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)

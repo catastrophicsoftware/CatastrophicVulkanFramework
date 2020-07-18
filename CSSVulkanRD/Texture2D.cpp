@@ -86,6 +86,8 @@ void Texture2D::Update(void* pData)
 		memcpy(pStagingMem, pData, memoryRequirements.size);
 		stagingBuffer->UnMap();
 
+		transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
 		auto xfrCmd = pDevice->GetTransferContext()->GetCommandBuffer(true);
 
 		VkBufferImageCopy region{};
@@ -106,8 +108,11 @@ void Texture2D::Update(void* pData)
 		};
 
 		vkCmdCopyBufferToImage(xfrCmd->handle, stagingBuffer->GetBuffer(), texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1, &region);
+		
+		vkEndCommandBuffer(xfrCmd->handle);
+		pDevice->TransferContext->Submit(xfrCmd);
 
-		transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 }
 
@@ -134,7 +139,7 @@ void Texture2D::UnMap()
 
 void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout)
 {
-	auto cmdBuf = pDevice->ImmediateContext->GetCommandBuffer(true);
+	auto cmdBuf = pDevice->ImmediateContext->GetCommandBuffer(true); //TODO: implement a way to set which context will be used to generate and submit these command lists
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -181,7 +186,7 @@ void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout,
 		1, &barrier
 	);
 
-	pDevice->ImmediateContext->SubmitCommandBuffer(cmdBuf, nullptr);
+	pDevice->ImmediateContext->Submit(cmdBuf);
 }
 
 void Texture2D::createStagingResource()
