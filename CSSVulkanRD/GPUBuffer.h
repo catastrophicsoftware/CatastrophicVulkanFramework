@@ -14,7 +14,6 @@ public:
 	void Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode,bool dynamic=false, bool gpuAllocate=true);
 
 	virtual void* Map() override;
-	virtual void* Map(VkDeviceSize offset, VkDeviceSize size) override;
 	virtual void UnMap() override;
 	virtual void Destroy() override;
 	virtual void Update(void* pData) override;

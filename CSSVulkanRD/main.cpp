@@ -98,7 +98,7 @@ void app::Initialize()
     wvp.projection[1][1] *= -1;
     wvp.world = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    auto gpu_mem = cbWVP->Map(0, sizeof(WorldViewProjection));
+    auto gpu_mem = cbWVP->Map();
     memcpy(gpu_mem, &wvp, sizeof(WorldViewProjection));
     cbWVP->UnMap();
 

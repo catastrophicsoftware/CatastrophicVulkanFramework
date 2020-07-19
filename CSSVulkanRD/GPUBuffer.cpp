@@ -100,15 +100,6 @@ void* GPUBuffer::Map()
 	return nullptr;
 }
 
-void* GPUBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
-{
-	if (!mapped && mappable)
-	{
-		return nullptr;
-	}
-	return nullptr;
-}
-
 void GPUBuffer::UnMap()
 {
 	if (mapped)

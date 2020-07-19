@@ -1094,7 +1094,7 @@ InflightFrame* GraphicsDevice::CreateInflightFrame()
 
 void GraphicsDevice::initializeMainMemoryManager()
 {
-    memoryManager = std::make_shared<GPUMemoryManager>(physicalGPU, GPU);
+    memoryManager = std::make_shared<GPUMemoryManager>(instance,physicalGPU, GPU);
 }
 
 void GraphicsDevice::GetGPUProperties()

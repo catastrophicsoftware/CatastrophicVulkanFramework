@@ -14,7 +14,6 @@ public:
 	virtual void Update(void* pData) = 0; //copy based update operation (in theory. You do you)
 
 	virtual void* Map() = 0;
-	virtual void* Map(VkDeviceSize offset, VkDeviceSize size) = 0;
 
 	virtual void  UnMap() = 0;
 protected:
