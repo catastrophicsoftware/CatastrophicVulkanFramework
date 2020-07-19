@@ -37,6 +37,7 @@ public:
 
     void RegisterDescriptorPoolSize(VkDescriptorPoolSize poolSize);
     void CreateDescriptorPool(uint32_t maxDescriptorSets);
+    void DestroyDescriptorPool();
 
     VkDescriptorPool GetDescriptorPool() const;
 private:
@@ -47,11 +48,11 @@ private:
     VkQueue  gpuQueue;
     VkDevice GPU;
 
-
     std::vector<VkDescriptorPoolSize> descriptorPoolDescriptions;
     VkDescriptorPool descriptorPool;
     uint32_t maxDescriptorSets;
     uint32_t numAllocatedDescriptorSets;
 
     std::mutex _lock;
+    bool descriptorPoolCreated;
 };

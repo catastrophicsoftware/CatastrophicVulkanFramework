@@ -82,7 +82,7 @@ public:
     void DrawFrame();
     int PrepareFrame();
 
-    void SetPushConstants(VkShaderStageFlags flags, size_t size, const void* pConstantData);
+    //void SetPushConstants(VkShaderStageFlags flags, size_t size, const void* pConstantData);
 
     InflightFrame* GetCurrentFrame(); //likely an oversimplification
 
@@ -101,18 +101,18 @@ public:
 
     std::shared_ptr<DeviceContext> CreateDeviceContext(VkQueueFlagBits queueType, bool transient=false);
 
-    void RegisterShaderDescriptor(ShaderDescriptor* pDescriptor); //deprecated
+    //void RegisterShaderDescriptor(ShaderDescriptor* pDescriptor); //deprecated
 
     void SetPipelineState(PipelineState* pState);
 
-    VkDescriptorSet GetPipelineDescriptorSet(uint32_t index);
+    //VkDescriptorSet GetPipelineDescriptorSet(uint32_t index);
 
     uint32_t GetSwapchainFramebufferCount() const;
     VkExtent2D GetSwapchainExtent() const;
 
     VkRenderPass GetRenderPass() const;
 
-    VkDescriptorPool GetDescriptorPool() const; //deprecated soon
+    //VkDescriptorPool GetDescriptorPool() const; //deprecated soon
 
     PipelineState* GetPipelineState() const;
 private:
@@ -129,13 +129,13 @@ private:
     VkSurfaceKHR surface;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
-    VkPipelineLayout pipelineLayout;
+    //VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
 
-    VkPipeline graphicsPipeline;
+    //VkPipeline graphicsPipeline;
     PipelineState* pPipelineState; //deprecated
 
-    VkDescriptorSetLayout descriptorSetLayout; //deprecated
+    //VkDescriptorSetLayout descriptorSetLayout; //deprecated
 
     VkQueue primaryGraphicsQueue; //this is queue index 0 of the GPUs main graphics queue family
 
@@ -159,16 +159,15 @@ private:
     void createRenderPass();
     void createFramebuffers();
     void createCommandPools();
-    void createDescriptorSetLayout();
+    //void createDescriptorSetLayout();
     void recreateSwapChain();
     void cleanupSwapchain();
     void CreateSurface();
-    void createDescriptorPool();
-    void createDescriptorSets();
+    //void createDescriptorPool();
+    //void createDescriptorSets();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void setupDebugMessenger();
-
 
     std::vector<const char*> getRequiredExtensions();
 
@@ -181,7 +180,7 @@ private:
     const bool enableValidationLayers = true;
 #endif
 
-    bool pipelineDirty;
+    //bool pipelineDirty;
 
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);
@@ -198,9 +197,9 @@ private:
     std::vector<VkFramebuffer>   swapChainFramebuffers;
     //----
 
-    VkDescriptorPool descriptorPool; //eventually move this into DeviceContext
-    std::vector<ShaderDescriptor*> registeredDescriptors;
-    std::vector<VkDescriptorSet> descriptorSets;
+    //VkDescriptorPool descriptorPool; //eventually move this into DeviceContext
+    //std::vector<ShaderDescriptor*> registeredDescriptors;
+    //std::vector<VkDescriptorSet> descriptorSets;
 
     size_t currentFrame = 0;
     bool framebufferResized = false;

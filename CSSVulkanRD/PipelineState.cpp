@@ -127,12 +127,6 @@ void PipelineState::SetPrimitiveRestartEnable(VkBool32 primitiveRestartEnabled)
 	dirty = true;
 }
 
-//void PipelineState::SetColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState)
-//{
-//	this->colorBlendState = colorBlendState;
-//	dirty = true;
-//}
-
 void PipelineState::SetRenderPass(VkRenderPass pass)
 {
 	renderPass = pass;
@@ -144,6 +138,11 @@ VkDescriptorSet PipelineState::GetDescriptorSet(uint32_t index)
 	assert(index <= descriptorSets.size());
 
 	return descriptorSets[index];
+}
+
+void PipelineState::CreateDescriptorSets()
+{
+	createDescriptorSets();
 }
 
 void PipelineState::RegisterDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding binding)
@@ -160,7 +159,6 @@ void PipelineState::SetDescriptorPool(VkDescriptorPool pool)
 void PipelineState::UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
 {
 	assert(descriptorSetIndex <= descriptorSets.size());
-
 
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.buffer = gpuBuffer;
@@ -205,7 +203,6 @@ void PipelineState::Build()
 		pipelineInfo.pColorBlendState = &blendState.blendState;
 
 		createDescriptorSetLayout(); //at this point build the descriptor set layout from descriptor set bindings
-		createDescriptorSets();
 
 		if (pushConstantRanges.size() > 0)
 		{
@@ -247,7 +244,16 @@ void PipelineState::Destroy()
 {
 	vkDestroyPipeline(GPU, pipeline, nullptr);
 	vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
-	vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
+	//vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
+
+	for (int i = 0; i < descriptorSets.size(); ++i)
+	{
+		//vkFreeDescriptorSets(GPU, descriptorPool, 1, &descriptorSets[i]); //vulkan complains about this
+		descriptorSets[i] = nullptr;
+	}
+
+	descriptorSets.resize(numFramebuffers);
+
 	dirty = true;
 }
 

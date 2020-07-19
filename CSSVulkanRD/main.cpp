@@ -177,7 +177,7 @@ void app::Initialize()
     Pipeline->SetPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     Pipeline->SetPrimitiveRestartEnable(VK_FALSE);
     Pipeline->SetRenderPass(pGraphics->GetRenderPass());
-    Pipeline->SetDescriptorPool(pGraphics->GetDescriptorPool());
+    Pipeline->SetDescriptorPool(pGraphics->ImmediateContext->GetDescriptorPool());
     Pipeline->SetShader(shader);
 
     VkDescriptorSetLayoutBinding wvpBinding{};
@@ -189,6 +189,7 @@ void app::Initialize()
 
     Pipeline->RegisterDescriptorSetLayoutBinding(wvpBinding);
     Pipeline->Build();
+    Pipeline->CreateDescriptorSets(); //7-19-2020 -- i think this goes here but not 100% sure
 
     pGraphics->SetPipelineState(Pipeline);
 }

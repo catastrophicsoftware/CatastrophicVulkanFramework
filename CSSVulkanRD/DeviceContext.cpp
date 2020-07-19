@@ -3,6 +3,7 @@
 
 DeviceContext::DeviceContext()
 {
+    descriptorPoolCreated = false;
 }
 
 DeviceContext::~DeviceContext()
@@ -91,10 +92,18 @@ void DeviceContext::Destroy()
 {
     vkDestroyCommandPool(GPU, commandPool, nullptr);
 
+    //if(descriptorPoolCreated)
+        //vkDestroyDescriptorPool(GPU, descriptorPool, nullptr); //7-19
+
     for (int i = 0; i < commandBufferPool.size(); ++i)
     {
         vkDestroyFence(GPU, commandBufferPool[i]->fence, nullptr);
         commandBufferPool.erase(commandBufferPool.begin() + i);
+    }
+
+    for (int i = 0; i < descriptorPoolDescriptions.size(); ++i)
+    {
+        descriptorPoolDescriptions.erase(descriptorPoolDescriptions.begin() + i);
     }
 }
 
@@ -114,6 +123,16 @@ void DeviceContext::CreateDescriptorPool(uint32_t maxDescriptorSets)
     this->maxDescriptorSets = maxDescriptorSets;
 
     VULKAN_CALL_ERROR(vkCreateDescriptorPool(GPU, &poolInfo, nullptr, &descriptorPool), "failed to create descriptor pool");
+    descriptorPoolCreated = true;
+}
+
+void DeviceContext::DestroyDescriptorPool()
+{
+    if (descriptorPoolCreated)
+    {
+        vkDestroyDescriptorPool(GPU, descriptorPool, nullptr);
+        descriptorPoolCreated = false;
+    }
 }
 
 VkDescriptorPool DeviceContext::GetDescriptorPool() const

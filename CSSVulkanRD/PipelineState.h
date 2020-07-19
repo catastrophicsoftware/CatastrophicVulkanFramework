@@ -39,6 +39,7 @@ public:
 	void SetRenderPass(VkRenderPass pass);
 
 	VkDescriptorSet GetDescriptorSet(uint32_t index);
+	void CreateDescriptorSets();
 	void RegisterDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding binding);
 	void SetDescriptorPool(VkDescriptorPool pool); //watch out for this
 	void UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
