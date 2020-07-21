@@ -21,6 +21,8 @@ public:
 
 	virtual void* Map() override;
 	virtual void UnMap() override;
+
+	VkImage GetTexture() const;
 private:
 	VkImage texture;
 	GPUBuffer* stagingBuffer;

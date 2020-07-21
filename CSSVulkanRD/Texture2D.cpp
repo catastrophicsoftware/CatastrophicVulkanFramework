@@ -31,6 +31,9 @@ void Texture2D::Create(uint32_t width, uint32_t height, VkFormat format, VkImage
 	desc.tiling = VK_IMAGE_TILING_OPTIMAL;
 	desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	desc.usage = imageUsageFlags;
+	desc.samples = VK_SAMPLE_COUNT_1_BIT;
+	desc.imageType = VK_IMAGE_TYPE_2D;
+	desc.arrayLayers = 1;
 
 	if (!mappable)desc.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
@@ -135,6 +138,11 @@ void Texture2D::UnMap()
 		vkUnmapMemory(GPU, textureMem->handle);
 		mapped = false;
 	}
+}
+
+VkImage Texture2D::GetTexture() const
+{
+	return texture;
 }
 
 void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout)

@@ -11,7 +11,7 @@ public:
 	GPUBuffer(GraphicsDevice* pDevice);
 	~GPUBuffer();
 
-	void Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode,bool dynamic=false, bool gpuAllocate=true);
+	void Create(size_t size, VkBufferUsageFlags usage, VkSharingMode sharingMode,bool dynamic=false, bool gpuAllocate=true);
 
 	virtual void* Map() override;
 	virtual void UnMap() override;

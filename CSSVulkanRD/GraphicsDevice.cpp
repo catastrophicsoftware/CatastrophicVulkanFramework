@@ -8,7 +8,6 @@
 GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
     pApplicationWindow = pAppWindow;
-    //pipelineDirty = false;
 
     transferContext = std::make_shared<DeviceContext>();
     immediateContext = std::make_shared<DeviceContext>();
@@ -73,8 +72,6 @@ void GraphicsDevice::cleanupSwapchain()
 
     pPipelineState->Destroy();
     vkDestroyRenderPass(GPU, renderPass, nullptr);
-
-    //vkDestroyFence(GPU, acquireImageFence, nullptr);
 
     for (int i = 0; i < inflightFrames.size(); i++) //clear out inflight frame list
     {
@@ -298,130 +295,6 @@ void GraphicsDevice::createImageViews()
     }
 }
 
-void GraphicsDevice::createGraphicsPipeline() //DEPRECATED DEMO CODE -- to be refactored
-{
-    //pShader = new Shader(GPU);
-    //pShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
-    //pShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    //VkPipelineShaderStageCreateInfo vertexStageInfo{};
-    //vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    //vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    //vertexStageInfo.pName = pShader->GetShader(VK_SHADER_STAGE_VERTEX_BIT)->entrypoint;
-    //vertexStageInfo.module = pShader->GetShader(VK_SHADER_STAGE_VERTEX_BIT)->module;
-
-    //VkPipelineShaderStageCreateInfo pixelStageInfo{};
-    //pixelStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    //pixelStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    //pixelStageInfo.pName = pShader->GetShader(VK_SHADER_STAGE_FRAGMENT_BIT)->entrypoint;
-    //pixelStageInfo.module = pShader->GetShader(VK_SHADER_STAGE_FRAGMENT_BIT)->module;
-
-    //VkPipelineShaderStageCreateInfo shaderStages[] = { vertexStageInfo, pixelStageInfo };
-
-    //VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-
-    //auto bindingDesc = VertexPositionColor::GetBindingDescription();
-    //auto attrDesc = VertexPositionColor::GetVertexAttributeDescriptions();
-
-    //vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    //vertexInputInfo.vertexBindingDescriptionCount = 1;
-    //vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrDesc.size());
-    //vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
-    //vertexInputInfo.pVertexAttributeDescriptions = attrDesc.data();
-
-    //VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    //inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    //inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    //inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-
-    ////---
-    //VkViewport viewport{};
-    //viewport.x = 0;
-    //viewport.y = 0;
-    //viewport.width = (float)swapChainExtent.width;
-    //viewport.height = (float)swapChainExtent.height;
-    //viewport.minDepth = 0.0f;
-    //viewport.maxDepth = 1.0f;
-
-    //VkRect2D scissor{};
-    //scissor.offset = { 0,0 };
-    //scissor.extent = swapChainExtent;
-
-    //VkPipelineViewportStateCreateInfo viewportState{};
-    //viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    //viewportState.viewportCount = 1;
-    //viewportState.pViewports = &viewport;
-    //viewportState.scissorCount = 1;
-    //viewportState.pScissors = &scissor;
-
-    //VkPipelineRasterizationStateCreateInfo rasterizer{};
-    //rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    //rasterizer.depthClampEnable = VK_FALSE;
-    //rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    //rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    //rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    //rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    //rasterizer.depthBiasEnable = VK_FALSE;
-    //rasterizer.lineWidth = 1.0f;
-
-    //VkPipelineMultisampleStateCreateInfo multisampling{};
-    //multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    //multisampling.sampleShadingEnable = VK_FALSE;
-    //multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    //VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-
-    //colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    //colorBlendAttachment.blendEnable = VK_TRUE;
-    //colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    //colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    //colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    //colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    //colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    //colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-    //VkPipelineColorBlendStateCreateInfo colorBlending{};
-    //colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    //colorBlending.logicOpEnable = VK_FALSE;
-    //colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
-    //colorBlending.attachmentCount = 1;
-    //colorBlending.pAttachments = &colorBlendAttachment;
-    //colorBlending.blendConstants[0] = 0.0f; // Optional
-    //colorBlending.blendConstants[1] = 0.0f; // Optional
-    //colorBlending.blendConstants[2] = 0.0f; // Optional
-    //colorBlending.blendConstants[3] = 0.0f; // Optional
-
-    ////VkPushConstantRange pcr_vertex_transforms{}; //todo: implement push constant management system
-    ////pcr_vertex_transforms.offset = 0;
-    ////pcr_vertex_transforms.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    ////pcr_vertex_transforms.size = sizeof(glm::mat4) * 3;
-
-    //VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-    //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    //pipelineLayoutInfo.setLayoutCount = 1;
-    //pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-
-    //VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout!");
-
-    //VkGraphicsPipelineCreateInfo pipelineInfo{};
-    //pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    //pipelineInfo.stageCount = 2;
-    //pipelineInfo.pStages = shaderStages;
-    //pipelineInfo.pVertexInputState = &vertexInputInfo;
-    //pipelineInfo.pInputAssemblyState = &inputAssembly;
-    //pipelineInfo.pViewportState = &viewportState;
-    //pipelineInfo.pRasterizationState = &rasterizer;
-    //pipelineInfo.pMultisampleState = &multisampling;
-    //pipelineInfo.pColorBlendState = &colorBlending;
-    //pipelineInfo.layout = pipelineLayout;
-    //pipelineInfo.renderPass = renderPass;
-    //pipelineInfo.subpass = 0;
-    //pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-
-    //VULKAN_CALL_ERROR(vkCreateGraphicsPipelines(GPU, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create graphics pipeline!");
-}
-
 void GraphicsDevice::createRenderPass()
 {
     VkAttachmentDescription colorAttachment{};
@@ -494,11 +367,19 @@ void GraphicsDevice::createCommandPools()
     immediateContext->Create(GPU, queueFamilyIndices.graphicsFamily.value());
     transferContext->Create(GPU, queueFamilyIndices.transferFamily.value());
 
-    VkDescriptorPoolSize cbPool{};
-    cbPool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cbPool.descriptorCount = 16;
-    immediateContext->RegisterDescriptorPoolSize(cbPool);
-    immediateContext->CreateDescriptorPool(16);
+    { //register descriptor pools for immediate context. eventually will be moving this to user code
+        VkDescriptorPoolSize cbPool{};
+        cbPool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        cbPool.descriptorCount = 8;
+
+        VkDescriptorPoolSize sbPool{};
+        sbPool.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        sbPool.descriptorCount = 8;
+
+        immediateContext->RegisterDescriptorPoolSize(cbPool);
+        immediateContext->RegisterDescriptorPoolSize(sbPool);
+        immediateContext->CreateDescriptorPool(16);
+    }
 
     ImmediateContext = immediateContext;
     TransferContext = transferContext;
@@ -610,11 +491,6 @@ std::vector<const char*> GraphicsDevice::getRequiredExtensions()
     return extensions;
 }
 
-//void GraphicsDevice::SetPushConstants(VkShaderStageFlags stage, size_t size, const void* pConstantData)
-//{
-//    vkCmdPushConstants(GetCurrentFrame()->cmdBuffer->handle, pipelineLayout, stage, 0, size, pConstantData);
-//}
-
 InflightFrame* GraphicsDevice::GetCurrentFrame()
 {
     return pActiveFrame;
@@ -651,81 +527,10 @@ void GraphicsDevice::CreateSurface() //possible weird shit
     VULKAN_CALL_ERROR(glfwCreateWindowSurface(instance, pApplicationWindow, nullptr, &surface), "error creating window surface");
 }
 
-//void GraphicsDevice::createDescriptorPool() //deprecated
-//{
-//    VkDescriptorPoolSize cbPoolSize{};
-//    cbPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-//    cbPoolSize.descriptorCount = 16;
-//
-//    VkDescriptorPoolSize samplerPoolSize{};
-//    samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-//    samplerPoolSize.descriptorCount = 4;
-//
-//    std::array<VkDescriptorPoolSize, 2> poolSizes = { cbPoolSize, samplerPoolSize };
-//
-//    VkDescriptorPoolCreateInfo poolInfo{};
-//    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-//    poolInfo.poolSizeCount = poolSizes.size();
-//    poolInfo.pPoolSizes = poolSizes.data();
-//    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
-//
-//    VULKAN_CALL_ERROR(vkCreateDescriptorPool(GPU, &poolInfo, nullptr, &descriptorPool), "failed to create descriptor pool");
-//}
-
-//void GraphicsDevice::createDescriptorSetLayout() //deprecated
-//{
-//    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-//    uboLayoutBinding.binding = 0;
-//    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-//    uboLayoutBinding.descriptorCount = 1;
-//    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-//    uboLayoutBinding.pImmutableSamplers = nullptr;
-//
-//    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-//    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-//    layoutInfo.bindingCount = 1;
-//    layoutInfo.pBindings = &uboLayoutBinding;
-//
-//    VULKAN_CALL_ERROR(vkCreateDescriptorSetLayout(GPU, &layoutInfo, nullptr, &descriptorSetLayout), "Error creating descriptor set layout");
-//}
-
-//void GraphicsDevice::createDescriptorSets() //deprecated
-//{
-//    //TODO: go through registered descriptors and
-//    //TODO: eventially review nvidia presentation and move descriptor pool into device context
-//
-//    uint32_t numDescriptorSets = registeredDescriptors.size() * swapChainImages.size();
-//
-//    std::vector<VkDescriptorSetLayout> layouts(numDescriptorSets, descriptorSetLayout);
-//
-//    VkDescriptorSetAllocateInfo allocInfo{};
-//    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-//    allocInfo.descriptorPool = descriptorPool;
-//    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
-//    allocInfo.pSetLayouts = layouts.data();
-//
-//    descriptorSets.resize(swapChainImages.size());
-//
-//    VULKAN_CALL(vkAllocateDescriptorSets(GPU, &allocInfo, descriptorSets.data()));
-//
-//    //TODO: interface portion after this with "user" code
-//}
-
-//void GraphicsDevice::RegisterShaderDescriptor(ShaderDescriptor* pDescriptor) //deprecated
-//{
-//    registeredDescriptors.push_back(pDescriptor);
-//    //possibly do more here
-//}
-
 void GraphicsDevice::SetPipelineState(PipelineState* pState)
 {
     pPipelineState = pState;
 }
-//
-//VkDescriptorSet GraphicsDevice::GetPipelineDescriptorSet(uint32_t index)
-//{
-//    return pPipelineState->GetDescriptorSet(index);
-//}
 
 uint32_t GraphicsDevice::GetSwapchainFramebufferCount() const
 {
@@ -741,11 +546,6 @@ VkRenderPass GraphicsDevice::GetRenderPass() const
 {
     return renderPass;
 }
-
-//VkDescriptorPool GraphicsDevice::GetDescriptorPool() const
-//{
-//    return descriptorPool;
-//}
 
 PipelineState* GraphicsDevice::GetPipelineState() const
 {
@@ -836,7 +636,7 @@ std::shared_ptr<DeviceContext> GraphicsDevice::GetTransferContext() const
     return transferContext;
 }
 
-std::shared_ptr<DeviceContext> GraphicsDevice::CreateDeviceContext(VkQueueFlagBits queueType, bool transient)
+std::shared_ptr<DeviceContext> GraphicsDevice::CreateDeviceContext(VkQueueFlags queueType, bool transient)
 {
     auto deviceContext = std::make_shared<DeviceContext>();
     auto qfi = FindQueueFamilies(physicalGPU);
@@ -1139,32 +939,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     if (func != nullptr) {
         func(instance, debugMessenger, pAllocator);
     }
-}
-
-std::array<VkVertexInputAttributeDescription, 2> VertexPositionColor::GetVertexAttributeDescriptions()
-{
-    std::array<VkVertexInputAttributeDescription, 2> attrDescriptions;
-    attrDescriptions[0].binding = 0;
-    attrDescriptions[0].location = 0;
-    attrDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-    attrDescriptions[0].offset = offsetof(VertexPositionColor, position);
-
-    attrDescriptions[1].binding = 0;
-    attrDescriptions[1].location = 1;
-    attrDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attrDescriptions[1].offset = offsetof(VertexPositionColor, color);
-
-    return attrDescriptions;
-}
-
-VkVertexInputBindingDescription VertexPositionColor::GetBindingDescription()
-{
-    VkVertexInputBindingDescription bindDesc{};
-    bindDesc.binding = 0;
-    bindDesc.stride = sizeof(VertexPositionColor);
-    bindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    return bindDesc;
 }
 
 bool QueueFamilyIndices::isComplete()

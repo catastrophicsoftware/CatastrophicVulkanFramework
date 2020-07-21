@@ -2,7 +2,7 @@
 #include "GraphicsDevice.h"
 #include "DeviceContext.h"
 
-void GPUBuffer::Create(size_t size, VkBufferUsageFlagBits usage, VkSharingMode sharingMode,bool dynamic, bool gpuAllocate)
+void GPUBuffer::Create(size_t size, VkBufferUsageFlags usage, VkSharingMode sharingMode,bool dynamic, bool gpuAllocate)
 {
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

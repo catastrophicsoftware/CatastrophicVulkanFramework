@@ -13,6 +13,8 @@
 #include "DeviceContext.h"
 #include <Windows.h>
 #include "Shader.h"
+#include "VertexTypes.h"
+#include "Texture2D.h"
 
 const std::vector<VertexPositionColor> vertices = {
     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -46,15 +48,21 @@ private:
     std::unique_ptr<GPUBuffer> VertexBuffer;
     std::unique_ptr<GPUBuffer> IndexBuffer;
     std::unique_ptr<GPUBuffer> cbWVP;
+
+    GPUBuffer* imageBuffer;
+
     Shader* shader;
     WorldViewProjection wvp;
+
+    Shader* compute;
+    PipelineState* computePipeline;
+
+    Texture2D* outTex;
 };
 
 
 
 int main() {
-    //GraphicsDevice* pApp = new GraphicsDevice();
-
     app* pApp = new app();
 
     try {
@@ -68,11 +76,15 @@ int main() {
     return EXIT_SUCCESS;
 }
 
+
 void app::Initialize()
 {
     shader = new Shader(pGraphics->GetGPU());
     shader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
     shader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    compute = new Shader(pGraphics->GetGPU());
+    compute->LoadShader("shaders\\test_compute.spv", "main", VK_SHADER_STAGE_COMPUTE_BIT);
 
     VertexBuffer = std::make_unique<GPUBuffer>(pGraphics);
     IndexBuffer = std::make_unique<GPUBuffer>(pGraphics);
@@ -87,6 +99,12 @@ void app::Initialize()
 
     cbWVP->Create(sizeof(WorldViewProjection), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
     	VK_SHARING_MODE_EXCLUSIVE, true);
+
+    imageBuffer = new GPUBuffer(pGraphics);
+    imageBuffer->Create(sizeof(glm::vec3) * (1024 * 1024),VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
+
+    outTex = new Texture2D(pGraphics);
+    outTex->Create(1024, 1024, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     wvp.view = glm::lookAt(
     	glm::vec3(0, 0, -4), 
@@ -192,6 +210,20 @@ void app::Initialize()
     Pipeline->CreateDescriptorSets(); //7-19-2020 -- i think this goes here but not 100% sure
 
     pGraphics->SetPipelineState(Pipeline);
+
+    computePipeline = new PipelineState(pGraphics->GetGPU(), pGraphics->GetSwapchainFramebufferCount());
+    computePipeline->SetShader(compute);
+    
+    VkDescriptorSetLayoutBinding csl{};
+    csl.binding = 0;
+    csl.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    csl.descriptorCount = 1;
+    csl.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    computePipeline->RegisterDescriptorSetLayoutBinding(csl);
+    computePipeline->Build(true);
+    computePipeline->SetDescriptorPool(pGraphics->ImmediateContext->GetDescriptorPool());
+    computePipeline->CreateDescriptorSets();
 }
 
 void app::Update()
@@ -200,6 +232,20 @@ void app::Update()
 
 void app::Render()
 {
+    { //async compute test
+        auto compCmd = pGraphics->ImmediateContext->GetCommandBuffer(true);
+        vkCmdBindPipeline(compCmd->handle, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->GetPipeline());
+        computePipeline->UpdateStorageBufferDescriptor(0, 0, imageBuffer->GetBuffer(), 0, sizeof(glm::vec3) * (1024 * 1024));
+        auto d_set = computePipeline->GetDescriptorSet(0);
+        vkCmdBindDescriptorSets(compCmd->handle, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->GetPipelineLayout(), 0, 1, &d_set, 0, nullptr);
+        vkCmdDispatch(compCmd->handle, 32, 32, 1);
+        vkEndCommandBuffer(compCmd->handle);
+        pGraphics->ImmediateContext->Submit(compCmd,&compCmd->fence);
+        vkWaitForFences(pGraphics->GetGPU(), 1, &compCmd->fence, VK_TRUE, INFINITE);
+        vkResetFences(pGraphics->GetGPU(), 1, &compCmd->fence);
+    }
+
+
     int fIndex = pGraphics->PrepareFrame();
     pGraphics->BeginRenderPass();
     auto currentFrame = pGraphics->GetCurrentFrame();
@@ -230,7 +276,5 @@ void app::Render()
 
 void app::DestroyResources()
 {
-    //VertexBuffer->Destroy();
-    //IndexBuffer->Destroy();
-    //cbWVP->Destroy();
+
 }

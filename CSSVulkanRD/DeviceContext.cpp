@@ -92,9 +92,6 @@ void DeviceContext::Destroy()
 {
     vkDestroyCommandPool(GPU, commandPool, nullptr);
 
-    //if(descriptorPoolCreated)
-        //vkDestroyDescriptorPool(GPU, descriptorPool, nullptr); //7-19
-
     for (int i = 0; i < commandBufferPool.size(); ++i)
     {
         vkDestroyFence(GPU, commandBufferPool[i]->fence, nullptr);

@@ -35,7 +35,6 @@ public:
 	void SetPushConstantRange(VkPushConstantRange range);
 	void SetPrimitiveTopology(VkPrimitiveTopology topology);
 	void SetPrimitiveRestartEnable(VkBool32 primitiveRestartEnabled);
-	//void SetColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState); redundant with BlendState structure member
 	void SetRenderPass(VkRenderPass pass);
 
 	VkDescriptorSet GetDescriptorSet(uint32_t index);
@@ -43,8 +42,9 @@ public:
 	void RegisterDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding binding);
 	void SetDescriptorPool(VkDescriptorPool pool); //watch out for this
 	void UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
+	void UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
 
-	void Build();
+	void Build(bool isComputePipeline=false);
 	VkPipeline GetPipeline() const;
 	VkPipelineLayout GetPipelineLayout() const; //probably replace this with something better
 
@@ -60,6 +60,7 @@ private:
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets();
+	void createPipelineLayout();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -76,8 +77,6 @@ private:
 
 	BlendState blendState;
 
-	//VkPipelineColorBlendStateCreateInfo colorBlendState;
-
 	VkPipelineLayoutCreateInfo  pipelineLayoutInfo;
 	VkPipelineLayout pipelineLayout;
 	VkGraphicsPipelineCreateInfo pipelineInfo;
@@ -92,4 +91,7 @@ private:
 
 	bool dirty;
 	uint32_t numFramebuffers;
+
+	//--compute specific pipeline state
+	VkComputePipelineCreateInfo computePipelineInfo;
 };

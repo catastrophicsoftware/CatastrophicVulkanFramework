@@ -6,23 +6,6 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator); 
 
-struct VertexPositionColor
-{
-    glm::vec2 position;
-    glm::vec3 color;
-
-    static VkVertexInputBindingDescription GetBindingDescription();
-    static std::array<VkVertexInputAttributeDescription,2> GetVertexAttributeDescriptions();
-};
-
-struct VertexPositionTexture
-{
-    glm::vec2 position;
-    glm::vec2 uv;
-
-    static VkVertexInputBindingDescription GetBindingDescription();
-    static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions();
-};
 
 struct QueueFamilyIndices
 {
@@ -45,13 +28,6 @@ struct SwapChainSupportDetails
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
-};
-
-struct ShaderDescriptor
-{
-    VkDescriptorType      type;
-    VkShaderStageFlagBits shaderStage;
-    void* pResource; //HACK!
 };
 
 class Shader;
@@ -82,8 +58,6 @@ public:
     void DrawFrame();
     int PrepareFrame();
 
-    //void SetPushConstants(VkShaderStageFlags flags, size_t size, const void* pConstantData);
-
     InflightFrame* GetCurrentFrame(); //likely an oversimplification
 
     std::shared_ptr<GPUMemoryManager> GetMainGPUMemoryAllocator() const;
@@ -99,25 +73,15 @@ public:
     std::shared_ptr<DeviceContext> ImmediateContext;
     std::shared_ptr<DeviceContext> TransferContext;
 
-    std::shared_ptr<DeviceContext> CreateDeviceContext(VkQueueFlagBits queueType, bool transient=false);
-
-    //void RegisterShaderDescriptor(ShaderDescriptor* pDescriptor); //deprecated
+    std::shared_ptr<DeviceContext> CreateDeviceContext(VkQueueFlags queueType, bool transient=false);
 
     void SetPipelineState(PipelineState* pState);
 
-    //VkDescriptorSet GetPipelineDescriptorSet(uint32_t index);
-
-    uint32_t GetSwapchainFramebufferCount() const;
-    VkExtent2D GetSwapchainExtent() const;
-
-    VkRenderPass GetRenderPass() const;
-
-    //VkDescriptorPool GetDescriptorPool() const; //deprecated soon
-
+    uint32_t       GetSwapchainFramebufferCount() const;
+    VkExtent2D     GetSwapchainExtent() const;
+    VkRenderPass   GetRenderPass() const;
     PipelineState* GetPipelineState() const;
 private:
-    Shader* pShader; //refactor
-
     GLFWwindow* pApplicationWindow;
 
     VkInstance instance;
@@ -129,13 +93,10 @@ private:
     VkSurfaceKHR surface;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
-    //VkPipelineLayout pipelineLayout;
+
     VkRenderPass renderPass;
 
-    //VkPipeline graphicsPipeline;
-    PipelineState* pPipelineState; //deprecated
-
-    //VkDescriptorSetLayout descriptorSetLayout; //deprecated
+    PipelineState* pPipelineState;
 
     VkQueue primaryGraphicsQueue; //this is queue index 0 of the GPUs main graphics queue family
 
@@ -155,16 +116,13 @@ private:
     void createLogicalDevice();
     void createSwapChain();
     void createImageViews();
-    void createGraphicsPipeline();
     void createRenderPass();
     void createFramebuffers();
     void createCommandPools();
-    //void createDescriptorSetLayout();
+
     void recreateSwapChain();
     void cleanupSwapchain();
     void CreateSurface();
-    //void createDescriptorPool();
-    //void createDescriptorSets();
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void setupDebugMessenger();
@@ -180,8 +138,6 @@ private:
     const bool enableValidationLayers = true;
 #endif
 
-    //bool pipelineDirty;
-
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalGPU);
@@ -196,10 +152,6 @@ private:
     std::vector<VkImageView>     swapChainImageViews;
     std::vector<VkFramebuffer>   swapChainFramebuffers;
     //----
-
-    //VkDescriptorPool descriptorPool; //eventually move this into DeviceContext
-    //std::vector<ShaderDescriptor*> registeredDescriptors;
-    //std::vector<VkDescriptorSet> descriptorSets;
 
     size_t currentFrame = 0;
     bool framebufferResized = false;

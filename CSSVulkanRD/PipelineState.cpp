@@ -9,11 +9,12 @@ PipelineState::PipelineState(VkDevice gpu, uint32_t numFramebuffers)
 	vertexInputInfo = {};
 	pipelineInfo = {};
 	pipelineLayoutInfo = {};
-	//colorBlendState = {};
 	descriptorSetLayoutCreateInfo = {};
+	computePipelineInfo = {};
 
 	this->numFramebuffers = numFramebuffers;
-	descriptorSets.resize(numFramebuffers);
+	descriptorSets.resize(numFramebuffers); //look into these in the context of compute shaders. depending on the compute pipeline it may not be necessary to have one
+	//descriptor set per swapchain image
 
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -22,8 +23,8 @@ PipelineState::PipelineState(VkDevice gpu, uint32_t numFramebuffers)
 	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	//colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 
 	dirty = false;
 }
@@ -177,9 +178,30 @@ void PipelineState::UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, u
 	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
 }
 
-void PipelineState::Build()
+void PipelineState::UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
 {
-	if (dirty)
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+	VkDescriptorBufferInfo bufferInfo{};
+	bufferInfo.buffer = gpuBuffer;
+	bufferInfo.offset = bindOffset;
+	bufferInfo.range = bindSize;
+
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0; //what the fuck is this
+	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	write.descriptorCount = 1;
+	write.pBufferInfo = &bufferInfo;
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
+void PipelineState::Build(bool isComputePipeline)
+{
+	if (dirty && !isComputePipeline)
 	{
 		pipelineInfo.stageCount = shaderStages.size();
 		pipelineInfo.pStages = shaderStages.data();
@@ -204,21 +226,23 @@ void PipelineState::Build()
 
 		createDescriptorSetLayout(); //at this point build the descriptor set layout from descriptor set bindings
 
-		if (pushConstantRanges.size() > 0)
-		{
-			pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
-			pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
-		}
-		else
-		{
-			pipelineLayoutInfo.pushConstantRangeCount = 0;
-			pipelineLayoutInfo.pPushConstantRanges = nullptr;
-		}
+		//if (pushConstantRanges.size() > 0)
+		//{
+		//	pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
+		//	pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+		//}
+		//else
+		//{
+		//	pipelineLayoutInfo.pushConstantRangeCount = 0;
+		//	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		//}
 
 
-		pipelineLayoutInfo.setLayoutCount = 1; //currently 1 descriptor set supported
-		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-		VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "failed to create graphics pipeline layout");
+		//pipelineLayoutInfo.setLayoutCount = 1; //currently 1 descriptor set supported
+		//pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+		//VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "failed to create graphics pipeline layout");
+
+		createPipelineLayout();
 
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = renderPass;
@@ -226,6 +250,19 @@ void PipelineState::Build()
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 		VULKAN_CALL_ERROR(vkCreateGraphicsPipelines(GPU, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline), "failed to create graphics pipeline");
+		dirty = false;
+	}
+	if (dirty && isComputePipeline)
+	{
+		assert(shaderStages.size() == 1);
+
+		createDescriptorSetLayout();
+		createPipelineLayout();
+
+		computePipelineInfo.stage = shaderStages[0];
+		computePipelineInfo.layout = pipelineLayout;
+
+		VULKAN_CALL_ERROR(vkCreateComputePipelines(GPU, VK_NULL_HANDLE, 1, &computePipelineInfo, nullptr, &pipeline), "failed to create compute pipeline!");
 		dirty = false;
 	}
 }
@@ -244,11 +281,9 @@ void PipelineState::Destroy()
 {
 	vkDestroyPipeline(GPU, pipeline, nullptr);
 	vkDestroyPipelineLayout(GPU, pipelineLayout, nullptr);
-	//vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
 
 	for (int i = 0; i < descriptorSets.size(); ++i)
 	{
-		//vkFreeDescriptorSets(GPU, descriptorPool, 1, &descriptorSets[i]); //vulkan complains about this
 		descriptorSets[i] = nullptr;
 	}
 
@@ -275,6 +310,24 @@ void PipelineState::createDescriptorSets()
 	allocInfo.pSetLayouts = layouts.data();
 
 	VULKAN_CALL_ERROR(vkAllocateDescriptorSets(GPU, &allocInfo, descriptorSets.data()), "failed to allocate descriptor sets");
+}
+
+void PipelineState::createPipelineLayout()
+{
+	if (pushConstantRanges.size() > 0)
+	{
+		pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
+		pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
+	}
+	else
+	{
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+	}
+
+	pipelineLayoutInfo.setLayoutCount = 1; //currently 1 descriptor set supported
+	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+	VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "failed to create graphics pipeline layout");
 }
 
 VertexInputData::VertexInputData()
