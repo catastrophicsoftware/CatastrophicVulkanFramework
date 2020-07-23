@@ -42,10 +42,12 @@ void Texture2D::Create(uint32_t width, uint32_t height, VkFormat format, VkImage
 	VULKAN_CALL_ERROR(vkCreateImage(GPU, &desc, nullptr, &texture), "failed to create texture2D");
 	vkGetImageMemoryRequirements(GPU, texture, &memoryRequirements);
 
-	if (allocateGPUMemory)
-	{
-		AllocateGPUMemory();
-	}
+	AllocateGPUMemory();
+}
+
+void Texture2D::CreateFromFile(const char* textureFilePath)
+{
+
 }
 
 void Texture2D::Destroy()
@@ -53,26 +55,32 @@ void Texture2D::Destroy()
 	vkDestroyImage(GPU, texture, nullptr);
 	if (gpuMemoryAllocated)
 	{
-		pDevice->GetMainGPUMemoryAllocator()->ReleaseGPUMemory(textureMem->allocID);
+		pDevice->GetMainGPUMemoryAllocator()->VMA_FreeMemory(textureMem);
 		gpuMemoryAllocated = false;
+
+		if (!mappable)
+			destroyStagingResource();
 	}
 }
 
 void Texture2D::AllocateGPUMemory()
 {
+	VmaMemoryUsage memFlags;
+
 	if (mappable)
 	{
-		textureMem = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(memoryRequirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		vkBindImageMemory(GPU, texture, textureMem->handle, 0);
-		gpuMemoryAllocated = true;
+		memFlags = VMA_MEMORY_USAGE_CPU_TO_GPU;
 	}
 	else
 	{
-		textureMem = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUMemory(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		vkBindImageMemory(GPU, texture, textureMem->handle, 0);
-
+		memFlags = VMA_MEMORY_USAGE_GPU_ONLY;
 		createStagingResource();
 	}
+
+	allocInfo.usage = memFlags;
+
+	texture = pDevice->GetMainGPUMemoryAllocator()->AllocateGPUImage(desc, &allocInfo, &textureMem);
+	gpuMemoryAllocated = true;
 }
 
 void Texture2D::Update(void* pData)
@@ -119,26 +127,25 @@ void Texture2D::Update(void* pData)
 	}
 }
 
-void* Texture2D::Map()
-{
-	if (mappable && !mapped)
-	{
-		void* pGPUMemoryRegion = nullptr;
-		VULKAN_CALL_ERROR(vkMapMemory(GPU, textureMem->handle, 0, memoryRequirements.size, 0, &pGPUMemoryRegion), "failed to map texture2D gpu memory");
-		mapped = true;
-		return pGPUMemoryRegion;
-	}
-	return nullptr;
-}
-
-void Texture2D::UnMap()
-{
-	if (mappable && mapped)
-	{
-		vkUnmapMemory(GPU, textureMem->handle);
-		mapped = false;
-	}
-}
+//void* Texture2D::Map()
+//{
+//	if (mappable && !mapped)
+//	{
+//		void* pGPUMemoryRegion = pDevice->GetMainGPUMemoryAllocator()->VMA_MapMemory(textureMem);
+//		mapped = true;
+//		return pGPUMemoryRegion;
+//	}
+//	return nullptr;
+//}
+//
+//void Texture2D::UnMap()
+//{
+//	if (mappable && mapped)
+//	{
+//		pDevice->GetMainGPUMemoryAllocator()->VMA_UnmapMemory(textureMem);
+//		mapped = false;
+//	}
+//}
 
 VkImage Texture2D::GetTexture() const
 {
@@ -193,6 +200,8 @@ void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout,
 		0, nullptr,
 		1, &barrier
 	);
+
+	vkEndCommandBuffer(cmdBuf->handle);
 
 	pDevice->ImmediateContext->Submit(cmdBuf);
 }

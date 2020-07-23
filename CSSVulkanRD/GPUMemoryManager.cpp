@@ -243,6 +243,13 @@ VkBuffer GPUMemoryManager::AllocateGPUBuffer(VkBufferCreateInfo createInfo,const
     return newBuffer;
 }
 
+VkImage GPUMemoryManager::AllocateGPUImage(VkImageCreateInfo createInfo, const VmaAllocationCreateInfo* allocInfo, VmaAllocation* pAlloc)
+{
+    VkImage newImage;
+    VULKAN_CALL_ERROR(vmaCreateImage(memoryAllocator, &createInfo, allocInfo, &newImage, pAlloc, nullptr), "failed to allocate gpu image");
+    return newImage;
+}
+
 void GPUMemoryManager::ReleaseGPUMemory(uint32_t allocID)
 {
     THREAD_LOCK(lock);

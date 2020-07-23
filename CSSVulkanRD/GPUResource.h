@@ -1,7 +1,9 @@
 #pragma once
 #include "includes.h"
+#include "memory-allocator/src/vk_mem_alloc.h"
 
 class GraphicsDevice;
+class GPUMemoryManager;
 
 class GPUResource
 {
@@ -9,22 +11,30 @@ public:
 	GPUResource(GraphicsDevice* pDevice);
 	~GPUResource();
 
-	virtual void Destroy() = 0;
+	virtual void Destroy();
 	virtual void AllocateGPUMemory() = 0;
-	virtual void Update(void* pData) = 0; //copy based update operation (in theory. You do you)
+	virtual void Update(void* pData) = 0; //copy based update operation
 
-	virtual void* Map() = 0;
-
-	virtual void  UnMap() = 0;
+	void* Map();
+	void  UnMap();
 protected:
 	GraphicsDevice* pDevice;
+	shared_ptr<GPUMemoryManager> pAllocator;
+
 	VkDevice GPU;
 	VkPhysicalDevice physicalDevice;
 	VkMemoryRequirements memoryRequirements;
 
 	VkDeviceSize size;
 
+	VmaAllocation     gpuMemory;
+	VmaAllocation     gpuStagingResourceMemory;
+	VmaAllocationCreateInfo gpuAllocInfo;
+	VmaAllocationCreateInfo gpuStagingAllocInfo;
+
 	bool gpuMemoryAllocated;
 	bool mapped;
 	bool mappable;
+
+	bool stagingResourceExists;
 };

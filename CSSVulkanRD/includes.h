@@ -1,5 +1,9 @@
 #pragma once
 
+#define CATASTROPHIC_PLATFORM_WINDOWS
+
+#include <Windows.h>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -18,6 +22,7 @@
 #include <thread>
 #include <mutex>
 
+using namespace std;
 
 typedef uint32_t uint32;
 #define VULKAN_CALL(x) if (x != VK_SUCCESS) {throw std::runtime_error("Vulkan API Call Failed!"); }

@@ -3,6 +3,7 @@
 #include <memory>
 #include "GPUResource.h"
 #include "GPUMemoryManager.h"
+#include "memory-allocator/src/vk_mem_alloc.h"
 
 class GraphicsDevice;
 class GPUBuffer;
@@ -14,15 +15,18 @@ public:
 	~Texture2D();
 
 	void Create(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags imageUsageFlags,bool mappable=false, bool allocateGPUMemory=true);
+	void CreateFromFile(const char* textureFilePath);
 
 	virtual void Destroy() override;
 	virtual void AllocateGPUMemory() override;
 	virtual void Update(void* pData) override;
 
-	virtual void* Map() override;
-	virtual void UnMap() override;
+	//virtual void* Map() override;
+	//virtual void UnMap() override;
 
 	VkImage GetTexture() const;
+
+
 private:
 	VkImage texture;
 	GPUBuffer* stagingBuffer;
@@ -31,8 +35,11 @@ private:
 
 	void transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout);
 
-	GPUMemoryAllocation* textureMem;
-	GPUMemoryAllocation* stagingMem;
+	VmaAllocation textureMem;
+	VmaAllocation stagingTextureMem;
+
+	VmaAllocationCreateInfo allocInfo;
+	VmaAllocationCreateInfo stagingAllocInfo;
 	void createStagingResource();
 	void destroyStagingResource();
 

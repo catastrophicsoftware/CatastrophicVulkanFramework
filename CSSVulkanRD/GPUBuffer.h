@@ -13,8 +13,8 @@ public:
 
 	void Create(size_t size, VkBufferUsageFlags usage, VkSharingMode sharingMode,bool dynamic=false, bool gpuAllocate=true);
 
-	virtual void* Map() override;
-	virtual void UnMap() override;
+	//virtual void* Map() override;
+	//virtual void UnMap() override;
 	virtual void Destroy() override;
 	virtual void Update(void* pData) override;
 
@@ -38,10 +38,10 @@ private:
 	//GPUMemoryAllocation* gpuMemory;
 	//GPUMemoryAllocation* stagingMem;
 
-	VmaAllocation gpuMemory;
-	VmaAllocation gpuStagingMemory;
-	VmaAllocationCreateInfo allocInfo;
-	VmaAllocationCreateInfo stagingAllocInfo;
+	//VmaAllocation gpuMemory;
+	//VmaAllocation gpuStagingMemory;
+	//VmaAllocationCreateInfo allocInfo;
+	//VmaAllocationCreateInfo stagingAllocInfo;
 };
 
 

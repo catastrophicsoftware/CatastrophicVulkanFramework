@@ -47,6 +47,7 @@ public:
 	GPUMemoryAllocation* PoolAllocateGPUMemory(VkMemoryRequirements allocReq, VkMemoryPropertyFlags memoryPropertyFlags);
 
 	VkBuffer AllocateGPUBuffer(VkBufferCreateInfo createInfo, const VmaAllocationCreateInfo* allocInfo, VmaAllocation* pAlloc);
+	VkImage AllocateGPUImage(VkImageCreateInfo createInfo, const VmaAllocationCreateInfo* allocInfo, VmaAllocation* pAlloc);
 
 	void ReleaseGPUMemory(uint32_t allocID);
 	void ReleaseAll();

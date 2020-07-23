@@ -148,6 +148,8 @@
   <ItemGroup>
     <ClCompile Include="CatastrophicVulkanFramework.cpp" />
     <ClCompile Include="DeviceContext.cpp" />
+    <ClCompile Include="EngineThread.cpp" />
+    <ClCompile Include="EngineThreadPool.cpp" />
     <ClCompile Include="GPUMemoryManager.cpp" />
     <ClCompile Include="GPUResource.cpp" />
     <ClCompile Include="GraphicsDevice.cpp" />
@@ -155,6 +157,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PipelineState.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="stbImpl.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="VertexTypes.cpp" />
     <ClCompile Include="vmaImpl.cpp" />
@@ -162,6 +165,8 @@
   <ItemGroup>
     <ClInclude Include="CatastrophicVulkanFramework.h" />
     <ClInclude Include="DeviceContext.h" />
+    <ClInclude Include="EngineThread.h" />
+    <ClInclude Include="EngineThreadPool.h" />
     <ClInclude Include="GPUMemoryManager.h" />
     <ClInclude Include="GPUResource.h" />
     <ClInclude Include="GraphicsDevice.h" />
@@ -169,6 +174,7 @@
     <ClInclude Include="includes.h" />
     <ClInclude Include="PipelineState.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexTypes.h" />
   </ItemGroup>
