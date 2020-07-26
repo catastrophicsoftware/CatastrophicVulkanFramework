@@ -14,24 +14,27 @@ public:
 	Texture2D(GraphicsDevice* pDevice);
 	~Texture2D();
 
-	void Create(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags imageUsageFlags,bool mappable=false, bool allocateGPUMemory=true);
-	void CreateFromFile(const char* textureFilePath);
+	void Create(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags imageUsageFlags,bool createSampler=false,bool mappable=false, bool allocateGPUMemory=true);
+	void CreateFromFile(const char* textureFilePath, bool createImageSampler=false);
 
 	virtual void Destroy() override;
 	virtual void AllocateGPUMemory() override;
 	virtual void Update(void* pData) override;
 
-	//virtual void* Map() override;
-	//virtual void UnMap() override;
-
 	VkImage GetTexture() const;
-
-
+	VkImageView GetImageView() const;
+	VkSampler GetSampler() const;
 private:
 	VkImage texture;
 	GPUBuffer* stagingBuffer;
 
 	VkImageCreateInfo desc;
+
+	VkImageView imageView;
+	VkSampler imageSampler;
+
+	void createSampler();
+	void createImageView();
 
 	void transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout);
 
@@ -45,5 +48,6 @@ private:
 
 	uint32_t width;
 	uint32_t height;
+	uint32_t loadedDataSize;
 	VkFormat format;
 };

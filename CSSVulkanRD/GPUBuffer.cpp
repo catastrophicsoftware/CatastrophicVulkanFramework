@@ -76,25 +76,6 @@ void GPUBuffer::Update(void* pData)
 	}
 }
 
-//void* GPUBuffer::Map()
-//{
-//	if (!mapped && mappable)
-//	{
-//		mapped = true;
-//		return pAllocator->VMA_MapMemory(gpuMemory);
-//	}
-//	return nullptr;
-//}
-//
-//void GPUBuffer::UnMap()
-//{
-//	if (mapped)
-//	{
-//		pAllocator->VMA_UnmapMemory(gpuMemory);
-//		mapped = false;
-//	}
-//}
-
 VkBuffer GPUBuffer::GetBuffer() const
 {
 	return buffer;
@@ -142,45 +123,4 @@ void GPUBuffer::createStagingBuffer()
 
 	gpuStagingAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 	stagingBuffer = pAllocator->AllocateGPUBuffer(stagingInfo, &gpuStagingAllocInfo, &gpuStagingResourceMemory);
-}
-
-
-DynamicPerFrameGPUBuffer::DynamicPerFrameGPUBuffer(GraphicsDevice* pDevice)
-{
-	this->pDevice = pDevice;
-}
-
-DynamicPerFrameGPUBuffer::~DynamicPerFrameGPUBuffer()
-{
-	for (int i = 0; i < buffers.size(); ++i)
-	{
-		buffers[i]->GPUBuffer->Destroy();
-		buffers[i]->pBufferOpFence = nullptr;
-	}
-}
-
-uint32_t DynamicPerFrameGPUBuffer::GetBufferCount() const
-{
-	return count;
-}
-
-void DynamicPerFrameGPUBuffer::Create(uint32_t bufferCount, uint32_t bufferSize, VkBufferUsageFlagBits bufferUsage)
-{
-	for (int i = 0; i < bufferCount; ++i)
-	{
-		auto buffer = std::make_shared<GPUBufferContainer>();
-		buffer->pBufferOpFence = nullptr;
-
-		buffer->GPUBuffer = new GPUBuffer(pDevice);
-		buffer->GPUBuffer->Create(bufferSize, bufferUsage, VK_SHARING_MODE_EXCLUSIVE, true);
-
-		buffers.push_back(buffer);
-	}
-}
-
-std::shared_ptr<GPUBufferContainer> DynamicPerFrameGPUBuffer::GetBuffer(uint32_t index) const
-{
-	assert(index <= (buffers.size() - 1));
-	
-	return buffers[index];
 }

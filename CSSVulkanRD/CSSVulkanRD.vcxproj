@@ -178,6 +178,11 @@
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexTypes.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\ps.frag" />
+    <None Include="shaders\test_compute.comp" />
+    <None Include="shaders\vs.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

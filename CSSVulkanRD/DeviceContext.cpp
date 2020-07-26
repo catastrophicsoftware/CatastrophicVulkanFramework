@@ -40,7 +40,7 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
     }
 }
 
-void DeviceContext::Submit(CommandBuffer* commandBuffer)
+void DeviceContext::Submit(CommandBuffer* commandBuffer, bool block)
 {
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -50,7 +50,8 @@ void DeviceContext::Submit(CommandBuffer* commandBuffer)
     vkResetFences(GPU, 1, &commandBuffer->fence);
     vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
 
-    vkWaitForFences(GPU, 1, &commandBuffer->fence, VK_TRUE, INFINITY);
+    if(block)
+        vkWaitForFences(GPU, 1, &commandBuffer->fence, VK_TRUE, INFINITY);
 }
 
 void DeviceContext::Submit(CommandBuffer* commandBuffer, VkFence* outPFence)
@@ -83,9 +84,6 @@ void DeviceContext::Create(VkDevice GPU, uint32_t queueFamily, bool transientCom
         cpci.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 
     VULKAN_CALL_ERROR(vkCreateCommandPool(GPU, &cpci, nullptr, &commandPool), "failed to create command pool");
-
-    //CreateDescriptorPool(32); //can't call this here because descriptor pool specificications
-    //and sizes have not been registered, do not fall into this trap again, dumbass.
 }
 
 void DeviceContext::Destroy()
@@ -135,6 +133,22 @@ void DeviceContext::DestroyDescriptorPool()
 VkDescriptorPool DeviceContext::GetDescriptorPool() const
 {
     return descriptorPool;
+}
+
+void DeviceContext::QueueCommandBuffer(CommandBuffer* finishedBuffer)
+{
+    finishedQueuedCommandBuffers.push_back(finishedBuffer);
+}
+
+void DeviceContext::SubmitQueuedCommandBuffers()
+{
+    int numBuffers = finishedQueuedCommandBuffers.size();
+    VkSubmitInfo submit{};
+
+    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit.commandBufferCount = numBuffers;  
+
+    //TODO, implement signal semaphores, wait semaphores
 }
 
 CommandBuffer* DeviceContext::createCommandBuffer(bool begin)

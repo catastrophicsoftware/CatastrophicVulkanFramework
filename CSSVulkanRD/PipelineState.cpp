@@ -199,6 +199,26 @@ void PipelineState::UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, u
 	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
 }
 
+void PipelineState::UpdateCombinedImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkImageView imageView, VkSampler imageSampler)
+{
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write.descriptorCount = 1;
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = imageView;
+	imageInfo.sampler = imageSampler;
+	write.pImageInfo = &imageInfo;
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
 void PipelineState::Build(bool isComputePipeline)
 {
 	if (dirty && !isComputePipeline)

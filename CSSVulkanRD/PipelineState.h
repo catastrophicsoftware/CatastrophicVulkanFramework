@@ -41,8 +41,10 @@ public:
 	void CreateDescriptorSets();
 	void RegisterDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding binding);
 	void SetDescriptorPool(VkDescriptorPool pool); //watch out for this
+
 	void UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
 	void UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
+	void UpdateCombinedImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkImageView imageView, VkSampler imageSampler);
 
 	void Build(bool isComputePipeline=false);
 	VkPipeline GetPipeline() const;
@@ -50,6 +52,7 @@ public:
 
 	void Destroy();
 private:
+
 	VkPipeline pipeline;
 	Shader* pShader;
 

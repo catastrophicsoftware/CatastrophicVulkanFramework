@@ -17,12 +17,12 @@
 #include "Texture2D.h"
 #include "EngineThreadPool.h"
 
-const std::vector<VertexPositionColor> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-    };
+const std::vector<VertexPositionTexture> vertices = {
+    {{-0.5f, -0.5f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f},  {1.0f, 0.0f}},
+    {{0.5f, 0.5f },   {1.0f, 1.0f}},
+    {{-0.5f, 0.5f},  {0.0f, 1.0f}}
+};
 
     const std::vector<uint16_t> indices = {
     0, 1, 2, 2, 3, 0
@@ -54,6 +54,9 @@ private:
 
     Shader* shader;
     WorldViewProjection wvp;
+    Texture2D* Texture;
+
+    void loadTextures();
 };
 
 
@@ -77,6 +80,8 @@ void app::Initialize()
     shader = new Shader(pGraphics->GetGPU());
     shader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
     shader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    loadTextures();
 
     VertexBuffer = std::make_unique<GPUBuffer>(pGraphics);
     IndexBuffer = std::make_unique<GPUBuffer>(pGraphics);
@@ -123,8 +128,8 @@ void app::Initialize()
     Pipeline->SetViewport(viewport);
 
     VertexInputData vsInputData;
-    vsInputData.vertexBindingDesc = VertexPositionColor::GetBindingDescription();
-    std::vector<VkVertexInputAttributeDescription> vertexAttrDesc = { VertexPositionColor::GetVertexAttributeDescriptions()[0],VertexPositionColor::GetVertexAttributeDescriptions()[1] }; //HACK!
+    vsInputData.vertexBindingDesc = VertexPositionTexture::GetBindingDescription();
+    std::vector<VkVertexInputAttributeDescription> vertexAttrDesc = { VertexPositionTexture::GetVertexAttributeDescriptions()[0],VertexPositionTexture::GetVertexAttributeDescriptions()[1] }; //HACK!
     vsInputData.vertexInputAttributeDescriptions = vertexAttrDesc;
 
     Pipeline->SetVertexInput(vsInputData);
@@ -194,9 +199,16 @@ void app::Initialize()
     wvpBinding.descriptorCount = 1;
     wvpBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+    VkDescriptorSetLayoutBinding samplerBinding{};
+    samplerBinding.binding = 1;
+    samplerBinding.descriptorCount = 1;
+    samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
     Pipeline->RegisterDescriptorSetLayoutBinding(wvpBinding);
+    Pipeline->RegisterDescriptorSetLayoutBinding(samplerBinding);
     Pipeline->Build();
-    Pipeline->CreateDescriptorSets(); //7-19-2020 -- i think this goes here but not 100% sure
+    Pipeline->CreateDescriptorSets();
 
     pGraphics->SetPipelineState(Pipeline);
 }
@@ -211,8 +223,6 @@ void app::Render()
     pGraphics->BeginRenderPass();
     auto currentFrame = pGraphics->GetCurrentFrame();
     VkCommandBuffer cmd = currentFrame->cmdBuffer->handle;
-    //all resource / buffer / view / whatever binding for rendered objects using current graphics
-    //pipeline state
 
     VkDeviceSize offsets[] = { 0 };
     VkBuffer binding[] = { VertexBuffer->GetBuffer() };
@@ -220,6 +230,7 @@ void app::Render()
     vkCmdBindIndexBuffer(cmd, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
     pGraphics->GetPipelineState()->UpdateUniformBufferDescriptor(fIndex, 0, cbWVP->GetBuffer(), 0, sizeof(WorldViewProjection));
+    pGraphics->GetPipelineState()->UpdateCombinedImageDescriptor(fIndex, 1, Texture->GetImageView(), Texture->GetSampler());
 
     VkDescriptorSet currentDescriptor = pGraphics->GetPipelineState()->GetDescriptorSet(fIndex);
     vkCmdBindDescriptorSets(cmd,
@@ -238,4 +249,10 @@ void app::Render()
 void app::DestroyResources()
 {
 
+}
+
+void app::loadTextures()
+{
+    Texture = new Texture2D(pGraphics);
+    Texture->CreateFromFile("textures\\test_grid.png", true);
 }

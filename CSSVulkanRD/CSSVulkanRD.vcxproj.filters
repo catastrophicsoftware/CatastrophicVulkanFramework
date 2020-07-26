@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{6b8a0195-b77f-4b64-be31-ed1d25c871aa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -104,5 +107,16 @@
     <ClInclude Include="stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\ps.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\test_compute.comp">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\vs.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

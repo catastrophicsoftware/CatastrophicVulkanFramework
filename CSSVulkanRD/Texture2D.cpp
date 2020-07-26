@@ -2,6 +2,7 @@
 #include "GraphicsDevice.h"
 #include "GPUBuffer.h"
 #include "DeviceContext.h"
+#include "stb_image.h"
 
 Texture2D::Texture2D(GraphicsDevice* pDevice) : GPUResource(pDevice)
 {
@@ -15,7 +16,7 @@ Texture2D::~Texture2D()
 {
 }
 
-void Texture2D::Create(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags imageUsageFlags,bool mappable, bool allocateGPUMemory)
+void Texture2D::Create(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags imageUsageFlags, bool createImageSampler, bool mappable, bool allocateGPUMemory)
 {
 	this->width = width;
 	this->height = height;
@@ -43,11 +44,58 @@ void Texture2D::Create(uint32_t width, uint32_t height, VkFormat format, VkImage
 	vkGetImageMemoryRequirements(GPU, texture, &memoryRequirements);
 
 	AllocateGPUMemory();
+
+	if (createImageSampler)
+	{
+		createImageView();
+		createSampler();
+	}
 }
 
-void Texture2D::CreateFromFile(const char* textureFilePath)
+void Texture2D::CreateFromFile(const char* textureFilePath, bool createImageSampler)
 {
+	int x, y, channels;
+	unsigned char* pixels = stbi_load(textureFilePath, &x, &y, &channels, STBI_rgb_alpha);
+	loadedDataSize = x * y * 4;
+	width = x;
+	height = y;
 
+	desc.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+
+
+	format = VK_FORMAT_R8G8B8A8_UNORM;
+	desc.format = format; //TODO: figure out how the fuck these stbi channels map to vulkan image formats
+
+
+	desc.extent.width = width;
+	desc.extent.height = height;
+	desc.extent.depth = 1; //2D texture only
+	desc.mipLevels = 1; //mip levels other than 1 currently not supported by catastrophic engine
+	desc.tiling = VK_IMAGE_TILING_OPTIMAL;
+	desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	desc.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	desc.samples = VK_SAMPLE_COUNT_1_BIT;
+	desc.imageType = VK_IMAGE_TYPE_2D;
+	desc.arrayLayers = 1;
+
+	if (!mappable)desc.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE; //other values not supported by CATEngine
+
+	VULKAN_CALL_ERROR(vkCreateImage(GPU, &desc, nullptr, &texture), "failed to create texture2D");
+	vkGetImageMemoryRequirements(GPU, texture, &memoryRequirements);
+
+	AllocateGPUMemory();
+
+	//assumption for now is that textures loaded from file are not dynamic and will reside in GPU-physical memory
+
+	Update(pixels);
+
+	if (createImageSampler)
+	{
+		createImageView();
+		createSampler();
+	}
 }
 
 void Texture2D::Destroy()
@@ -57,6 +105,9 @@ void Texture2D::Destroy()
 	{
 		pDevice->GetMainGPUMemoryAllocator()->VMA_FreeMemory(textureMem);
 		gpuMemoryAllocated = false;
+
+		vkDestroyImageView(GPU, imageView, nullptr);
+		vkDestroySampler(GPU, imageSampler, nullptr);
 
 		if (!mappable)
 			destroyStagingResource();
@@ -94,7 +145,7 @@ void Texture2D::Update(void* pData)
 	else
 	{
 		void* pStagingMem = stagingBuffer->Map();
-		memcpy(pStagingMem, pData, memoryRequirements.size);
+		memcpy(pStagingMem, pData, static_cast<size_t>(loadedDataSize));
 		stagingBuffer->UnMap();
 
 		transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -127,29 +178,58 @@ void Texture2D::Update(void* pData)
 	}
 }
 
-//void* Texture2D::Map()
-//{
-//	if (mappable && !mapped)
-//	{
-//		void* pGPUMemoryRegion = pDevice->GetMainGPUMemoryAllocator()->VMA_MapMemory(textureMem);
-//		mapped = true;
-//		return pGPUMemoryRegion;
-//	}
-//	return nullptr;
-//}
-//
-//void Texture2D::UnMap()
-//{
-//	if (mappable && mapped)
-//	{
-//		pDevice->GetMainGPUMemoryAllocator()->VMA_UnmapMemory(textureMem);
-//		mapped = false;
-//	}
-//}
-
 VkImage Texture2D::GetTexture() const
 {
 	return texture;
+}
+
+VkImageView Texture2D::GetImageView() const
+{
+	return imageView;
+}
+
+VkSampler Texture2D::GetSampler() const
+{
+	return imageSampler;
+}
+
+void Texture2D::createSampler()
+{
+	VkSamplerCreateInfo sci{};
+	sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sci.magFilter = VK_FILTER_LINEAR;
+	sci.minFilter = VK_FILTER_LINEAR;
+	sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sci.anisotropyEnable = VK_TRUE;
+	sci.maxAnisotropy = 16.0f;
+	sci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sci.unnormalizedCoordinates = VK_FALSE;
+	sci.compareEnable = VK_FALSE;
+	sci.compareOp = VK_COMPARE_OP_ALWAYS;
+	sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sci.mipLodBias = 0.0f;
+	sci.minLod = 0.0f;
+	sci.maxLod = 0.0f;
+
+	VULKAN_CALL_ERROR(vkCreateSampler(GPU, &sci, nullptr, &imageSampler), "failed to create image sampler!");
+}
+
+void Texture2D::createImageView()
+{
+	VkImageViewCreateInfo ivci{};
+	ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	ivci.image = texture;
+	ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	ivci.format = desc.format;
+	ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	ivci.subresourceRange.baseMipLevel = 0;
+	ivci.subresourceRange.levelCount = 1;
+	ivci.subresourceRange.baseArrayLayer = 0;
+	ivci.subresourceRange.layerCount = 1;
+	
+	VULKAN_CALL_ERROR(vkCreateImageView(GPU, &ivci, nullptr, &imageView), "failed to create image view!");
 }
 
 void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout)
@@ -168,8 +248,8 @@ void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout,
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = 0; // TODO
-	barrier.dstAccessMask = 0; // TODO
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
 
 	VkPipelineStageFlags sourceStage;
 	VkPipelineStageFlags destinationStage;

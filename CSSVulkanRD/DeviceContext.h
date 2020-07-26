@@ -20,6 +20,7 @@ struct InflightFrame
     void* pPerFrameData;
 };
 
+
 class DeviceContext
 {
 public:
@@ -27,7 +28,7 @@ public:
     ~DeviceContext();
 
     CommandBuffer* GetCommandBuffer(bool begin = false);
-    void Submit(CommandBuffer* commandBuffer);
+    void Submit(CommandBuffer* commandBuffer, bool block=false);
     void Submit(CommandBuffer* commandBuffer, VkFence* outPFence);
 
     void SetQueue(VkQueue queue);
@@ -40,6 +41,9 @@ public:
     void DestroyDescriptorPool();
 
     VkDescriptorPool GetDescriptorPool() const;
+
+    void QueueCommandBuffer(CommandBuffer* finishedBuffer);
+    void SubmitQueuedCommandBuffers();
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;
@@ -55,4 +59,6 @@ private:
 
     std::mutex _lock;
     bool descriptorPoolCreated;
+
+    std::vector<CommandBuffer*> finishedQueuedCommandBuffers;
 };

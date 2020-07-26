@@ -26,6 +26,12 @@ VkVertexInputBindingDescription VertexPositionColor::GetBindingDescription()
     return bindDesc;
 }
 
+VertexPositionTexture::VertexPositionTexture(glm::vec2 position, glm::vec2 uv)
+{
+    this->position = position;
+    this->texcoord = uv;
+}
+
 VkVertexInputBindingDescription VertexPositionTexture::GetBindingDescription()
 {
     VkVertexInputBindingDescription bindDesc{};
@@ -36,7 +42,7 @@ VkVertexInputBindingDescription VertexPositionTexture::GetBindingDescription()
     return bindDesc;
 }
 
-std::array<VkVertexInputAttributeDescription, 2> VertexPositionTexture::GetAttributeDescriptions()
+std::array<VkVertexInputAttributeDescription, 2> VertexPositionTexture::GetVertexAttributeDescriptions()
 {
     std::array<VkVertexInputAttributeDescription, 2> attrDesc;
 

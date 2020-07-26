@@ -171,6 +171,8 @@ void GraphicsDevice::createLogicalDevice()
     }
 
     VkPhysicalDeviceFeatures DeviceFeatures{};
+    DeviceFeatures.samplerAnisotropy = VK_TRUE;
+    DeviceFeatures.fillModeNonSolid = VK_TRUE;
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
@@ -376,8 +378,13 @@ void GraphicsDevice::createCommandPools()
         sbPool.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         sbPool.descriptorCount = 8;
 
+        VkDescriptorPoolSize cisPool{};
+        cisPool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        cisPool.descriptorCount = 8;
+
         immediateContext->RegisterDescriptorPoolSize(cbPool);
         immediateContext->RegisterDescriptorPoolSize(sbPool);
+        immediateContext->RegisterDescriptorPoolSize(cisPool);
         immediateContext->CreateDescriptorPool(16);
     }
 
