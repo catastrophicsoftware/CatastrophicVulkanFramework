@@ -51,7 +51,7 @@ void CatastrophicVulkanFrameworkApplication::FramebufferResizeCallback(GLFWwindo
 {
 	auto graphics = reinterpret_cast<GraphicsDevice*>(glfwGetWindowUserPointer(window));
 
-	ExitProcess(0); //7-19-2020 -- there might be some video driver edge case causing my
+	//ExitProcess(0); //7-19-2020 -- there might be some video driver edge case causing my
 	//min/maximization process to get totally fucked. minimization / maximization is not supported for now
 
 	graphics->WaitForGPUIdle();

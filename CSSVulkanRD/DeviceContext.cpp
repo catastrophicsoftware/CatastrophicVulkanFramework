@@ -96,12 +96,16 @@ void DeviceContext::Destroy()
     {
         vkDestroyFence(GPU, commandBufferPool[i]->fence, nullptr);
         commandBufferPool.erase(commandBufferPool.begin() + i);
+        i--;
     }
 
     for (int i = 0; i < descriptorPoolDescriptions.size(); ++i)
     {
         descriptorPoolDescriptions.erase(descriptorPoolDescriptions.begin() + i);
+        i--;
     }
+
+    int a = 4;
 }
 
 void DeviceContext::RegisterDescriptorPoolSize(VkDescriptorPoolSize poolSize)

@@ -408,8 +408,10 @@ void GraphicsDevice::recreateSwapChain()
     createImageViews();
     createRenderPass();
 
-    pPipelineState->SetRenderPass(renderPass);
-    pPipelineState->Build();
+    /*pPipelineState->SetRenderPass(renderPass);
+    pPipelineState->Build();*/
+    recreatePipelineStateCallback();
+    //TODO: fire event to user code to rebuild pipeline state
 
     createFramebuffers();
     
@@ -555,6 +557,11 @@ VkRenderPass GraphicsDevice::GetRenderPass() const
 PipelineState* GraphicsDevice::GetPipelineState() const
 {
     return pPipelineState;
+}
+
+void GraphicsDevice::SetPipelineStateRecreateCallback(std::function<void()> callback)
+{
+    recreatePipelineStateCallback = callback;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL GraphicsDevice::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)

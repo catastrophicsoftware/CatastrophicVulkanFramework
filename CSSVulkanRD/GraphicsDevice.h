@@ -1,5 +1,6 @@
 #pragma once
 #include "includes.h"
+#include <functional>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -81,6 +82,8 @@ public:
     VkExtent2D     GetSwapchainExtent() const;
     VkRenderPass   GetRenderPass() const;
     PipelineState* GetPipelineState() const;
+
+    void SetPipelineStateRecreateCallback(std::function<void()> callback);
 private:
     GLFWwindow* pApplicationWindow;
 
@@ -137,6 +140,8 @@ private:
 #else
     const bool enableValidationLayers = true;
 #endif
+
+    std::function<void()> recreatePipelineStateCallback;
 
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalGPU);
     bool IsDeviceSuitable(VkPhysicalDevice physicalGPU);
