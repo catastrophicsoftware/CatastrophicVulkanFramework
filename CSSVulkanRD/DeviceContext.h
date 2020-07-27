@@ -3,10 +3,15 @@
 #include <vector>
 #include <mutex>
 
+
 struct CommandBuffer
 {
     VkCommandBuffer handle;
     VkFence fence;
+    bool recording;
+
+    void Begin();
+    void End();
 };
 
 struct InflightFrame

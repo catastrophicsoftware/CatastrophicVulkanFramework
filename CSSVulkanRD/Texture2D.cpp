@@ -171,7 +171,8 @@ void Texture2D::Update(void* pData)
 
 		vkCmdCopyBufferToImage(xfrCmd->handle, stagingBuffer->GetBuffer(), texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1, &region);
 		
-		vkEndCommandBuffer(xfrCmd->handle);
+		//vkEndCommandBuffer(xfrCmd->handle);
+		xfrCmd->End();
 		pDevice->TransferContext->Submit(xfrCmd);
 
 		transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -281,7 +282,8 @@ void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout,
 		1, &barrier
 	);
 
-	vkEndCommandBuffer(cmdBuf->handle);
+	//vkEndCommandBuffer(cmdBuf->handle);
+	cmdBuf->End();
 
 	pDevice->ImmediateContext->Submit(cmdBuf);
 }

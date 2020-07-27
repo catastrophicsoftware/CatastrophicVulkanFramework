@@ -21,7 +21,7 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
     {
         for (CommandBuffer* buffer : commandBufferPool)
         {
-            if (vkGetFenceStatus(GPU, buffer->fence) == VK_SUCCESS)
+            if (!buffer->recording && vkGetFenceStatus(GPU, buffer->fence) == VK_SUCCESS)
             {
                 if (begin)
                 {
@@ -29,6 +29,7 @@ CommandBuffer* DeviceContext::GetCommandBuffer(bool begin)
                     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
                     VULKAN_CALL_ERROR(vkBeginCommandBuffer(buffer->handle, &beginInfo), "failed to begin command buffer");
+                    buffer->recording = true;
                 }
                 return buffer;
             }
@@ -155,12 +156,14 @@ void DeviceContext::SubmitQueuedCommandBuffers()
 void DeviceContext::PipelineExecutionBarrier(VkPipelineStageFlagBits sourceStage, VkPipelineStageFlagBits destStage)
 {
     auto barrierBuffer = GetCommandBuffer(true);
+
     vkCmdPipelineBarrier(barrierBuffer->handle,
         sourceStage,
         destStage,
         0, 0, 0, 0, 0, 0, 0);
 
-    vkEndCommandBuffer(barrierBuffer->handle);
+    barrierBuffer->End();
+
     Submit(barrierBuffer);
 }
 
@@ -179,6 +182,7 @@ CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
     VkFenceCreateInfo fci{};
     fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     VULKAN_CALL_ERROR(vkCreateFence(GPU, &fci, nullptr, &newBuffer->fence), "failed to create command buffer fence");
+    newBuffer->recording = false;
     commandBufferPool.push_back(newBuffer);
 
     if (begin)
@@ -187,8 +191,24 @@ CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         VULKAN_CALL_ERROR(vkBeginCommandBuffer(newBuffer->handle, &beginInfo), "failed to begin command buffer");
-
+        newBuffer->recording = true;
         return newBuffer;
     }
     return newBuffer;
+}
+
+void CommandBuffer::End()
+{
+    vkEndCommandBuffer(handle);
+    recording = false;
+}
+
+void CommandBuffer::Begin()
+{
+    VkCommandBufferBeginInfo begin{};
+    begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    VULKAN_CALL_ERROR(vkBeginCommandBuffer(handle, &begin), "failed to begin command buffer recording");
+    recording = true;
 }

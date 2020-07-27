@@ -680,7 +680,8 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer->handle, &beginInfo));
+    //VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer->handle, &beginInfo));
+    pActiveFrame->cmdBuffer->Begin();
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -701,7 +702,8 @@ void GraphicsDevice::BeginRenderPass()
 void GraphicsDevice::EndRenderPass()
 {
     vkCmdEndRenderPass(pActiveFrame->cmdBuffer->handle);
-    VULKAN_CALL(vkEndCommandBuffer(pActiveFrame->cmdBuffer->handle));
+    //VULKAN_CALL(vkEndCommandBuffer(pActiveFrame->cmdBuffer->handle));
+    pActiveFrame->cmdBuffer->End();
 }
 
 void GraphicsDevice::WaitForGPUIdle()
