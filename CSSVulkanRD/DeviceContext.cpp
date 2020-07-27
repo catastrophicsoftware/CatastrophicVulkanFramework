@@ -60,6 +60,7 @@ void DeviceContext::Submit(CommandBuffer* commandBuffer, VkFence* outPFence)
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit.commandBufferCount = 1;
     submit.pCommandBuffers = &commandBuffer->handle;
+
     vkResetFences(GPU, 1, &commandBuffer->fence);
     vkQueueSubmit(gpuQueue, 1, &submit, commandBuffer->fence);
     outPFence = &commandBuffer->fence;

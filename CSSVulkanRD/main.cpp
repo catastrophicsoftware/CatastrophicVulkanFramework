@@ -57,11 +57,12 @@ private:
     Texture2D* Texture;
 
     void loadTextures();
+    ThreadPool* threadPool;
 };
 
 
-
-int main() {
+int main()
+{
     app* pApp = new app();
 
     try {
@@ -75,11 +76,18 @@ int main() {
     return EXIT_SUCCESS;
 }
 
+void test_func(void* pArg)
+{
+    MessageBox(0, L"thread pool test", L"thread pool test", MB_OK);
+}
+
 void app::Initialize()
 {
     shader = new Shader(pGraphics->GetGPU());
     shader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
     shader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    threadPool->ExecuteWorkQueue(0);
 
     loadTextures();
 
@@ -219,6 +227,8 @@ void app::Update()
 
 void app::Render()
 {
+    //pGraphics->WaitForGPUIdle(); //without this, there is an issue with descriptor sets being accessed before all GPU work that references them is complete
+
     int fIndex = pGraphics->PrepareFrame();
     pGraphics->BeginRenderPass();
     auto currentFrame = pGraphics->GetCurrentFrame();

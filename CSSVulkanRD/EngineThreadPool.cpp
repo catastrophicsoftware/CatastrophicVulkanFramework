@@ -11,12 +11,6 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::Initialize(int NumThreads)
 {
-	//WorkAvailableHandles = (HANDLE*)Memory->Allocate(sizeof(HANDLE) * NumThreads, __alignof(HANDLE));
-	//WorkCompleteHandles  = (HANDLE*)Memory->Allocate(sizeof(HANDLE) * NumThreads, __alignof(HANDLE));
-	//QueueLocks = (CRITICAL_SECTION*)Memory->Allocate(sizeof(CRITICAL_SECTION) * NumThreads, __alignof(CRITICAL_SECTION));
-
-	//Data = (ThreadPoolData*)Memory->Allocate(sizeof(ThreadPoolData) * NumThreads, __alignof(ThreadPoolData));
-
 	WorkAvailableHandles = new HANDLE[NumThreads];
 	WorkCompleteHandles = new HANDLE[NumThreads];
 	QueueLocks = new CRITICAL_SECTION[NumThreads];

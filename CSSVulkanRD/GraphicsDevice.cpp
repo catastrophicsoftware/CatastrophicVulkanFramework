@@ -429,6 +429,8 @@ void GraphicsDevice::recreateSwapChain()
 
 void GraphicsDevice::DrawFrame()
 {
+    //vkWaitForFences(GPU, 1, &pActiveFrame->cmdBuffer->fence, VK_TRUE, INFINITE); //7-26-2020 --need to look into this
+
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -598,6 +600,8 @@ void GraphicsDevice::ResizeFramebuffer()
 
 int GraphicsDevice::PrepareFrame()
 {
+    if(pActiveFrame) vkWaitForFences(GPU, 1, &pActiveFrame->cmdBuffer->fence, VK_TRUE, INFINITE); // 7-26-2020 this seems to fix the synchronization issue
+
     pActiveFrame = GetAvailableFrame();
     VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveFrame->imageAvailable, VK_NULL_HANDLE, &imageIndex);
     pActiveFrame->frameIndex = imageIndex;
