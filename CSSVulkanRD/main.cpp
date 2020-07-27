@@ -87,7 +87,6 @@ void app::Initialize()
     shader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
     shader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    threadPool->ExecuteWorkQueue(0);
 
     loadTextures();
 
@@ -227,8 +226,6 @@ void app::Update()
 
 void app::Render()
 {
-    //pGraphics->WaitForGPUIdle(); //without this, there is an issue with descriptor sets being accessed before all GPU work that references them is complete
-
     int fIndex = pGraphics->PrepareFrame();
     pGraphics->BeginRenderPass();
     auto currentFrame = pGraphics->GetCurrentFrame();

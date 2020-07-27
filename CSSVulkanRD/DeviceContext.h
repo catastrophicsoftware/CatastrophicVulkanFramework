@@ -44,6 +44,8 @@ public:
 
     void QueueCommandBuffer(CommandBuffer* finishedBuffer);
     void SubmitQueuedCommandBuffers();
+
+    void PipelineExecutionBarrier(VkPipelineStageFlagBits sourceStage, VkPipelineStageFlagBits destStage);
 private:
     VkCommandPool commandPool;
     std::vector<CommandBuffer*> commandBufferPool;

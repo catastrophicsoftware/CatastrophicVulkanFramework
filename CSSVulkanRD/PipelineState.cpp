@@ -157,6 +157,7 @@ void PipelineState::SetDescriptorPool(VkDescriptorPool pool)
 	descriptorPool = pool;
 }
 
+//todo: 7-26-2020 look into batching these descriptor writes per frame
 void PipelineState::UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
 {
 	assert(descriptorSetIndex <= descriptorSets.size());
@@ -178,6 +179,7 @@ void PipelineState::UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, u
 	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
 }
 
+//todo: 7-26-2020 look into batching these descriptor writes per frame
 void PipelineState::UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
 {
 	assert(descriptorSetIndex <= descriptorSets.size());
@@ -199,6 +201,7 @@ void PipelineState::UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, u
 	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
 }
 
+//todo: 7-26-2020 look into batching these descriptor writes per frame
 void PipelineState::UpdateCombinedImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkImageView imageView, VkSampler imageSampler)
 {
 	assert(descriptorSetIndex <= descriptorSets.size());
@@ -245,22 +248,6 @@ void PipelineState::Build(bool isComputePipeline)
 		pipelineInfo.pColorBlendState = &blendState.blendState;
 
 		createDescriptorSetLayout(); //at this point build the descriptor set layout from descriptor set bindings
-
-		//if (pushConstantRanges.size() > 0)
-		//{
-		//	pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size();
-		//	pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.data();
-		//}
-		//else
-		//{
-		//	pipelineLayoutInfo.pushConstantRangeCount = 0;
-		//	pipelineLayoutInfo.pPushConstantRanges = nullptr;
-		//}
-
-
-		//pipelineLayoutInfo.setLayoutCount = 1; //currently 1 descriptor set supported
-		//pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-		//VULKAN_CALL_ERROR(vkCreatePipelineLayout(GPU, &pipelineLayoutInfo, nullptr, &pipelineLayout), "failed to create graphics pipeline layout");
 
 		createPipelineLayout();
 

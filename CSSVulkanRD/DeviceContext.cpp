@@ -152,6 +152,18 @@ void DeviceContext::SubmitQueuedCommandBuffers()
     //TODO, implement signal semaphores, wait semaphores
 }
 
+void DeviceContext::PipelineExecutionBarrier(VkPipelineStageFlagBits sourceStage, VkPipelineStageFlagBits destStage)
+{
+    auto barrierBuffer = GetCommandBuffer(true);
+    vkCmdPipelineBarrier(barrierBuffer->handle,
+        sourceStage,
+        destStage,
+        0, 0, 0, 0, 0, 0, 0);
+
+    vkEndCommandBuffer(barrierBuffer->handle);
+    Submit(barrierBuffer);
+}
+
 CommandBuffer* DeviceContext::createCommandBuffer(bool begin)
 {
     CommandBuffer* newBuffer = new CommandBuffer();

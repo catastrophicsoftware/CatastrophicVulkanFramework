@@ -46,8 +46,6 @@ void GraphicsDevice::cleanup()
 
     cleanupSwapchain();
 
-    //vkDestroyDescriptorSetLayout(GPU, descriptorSetLayout, nullptr);
-
     vkDestroyDevice(GPU, nullptr);
 
     if (enableValidationLayers) {
@@ -152,7 +150,7 @@ void GraphicsDevice::createLogicalDevice()
 
         queueCreateInfo.queueFamilyIndex = queueFamily.first;
 
-        if (i != 0) //all other queues other than index 0 (graphics) will have as many queues as the gpu supports
+        if (i != 0) //all other queues other than index 0 (graphics) will have as many queues as the gpu supports (7-26-2020 look into this, not sure if we should be blindly creating GPU queues without intent to use them, could have performance penalty)
         {
             queueCreateInfo.queueCount = queueFamily.second;
             float* pQueuePriorities = new float[queueCreateInfo.queueCount];
@@ -344,8 +342,10 @@ void GraphicsDevice::createFramebuffers()
 {
     swapChainFramebuffers.resize(swapChainImages.size());
 
-    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-        VkImageView attachments[] = {
+    for (size_t i = 0; i < swapChainImageViews.size(); i++)
+    {
+        VkImageView attachments[] =
+        {
             swapChainImageViews[i]
         };
 
@@ -369,7 +369,7 @@ void GraphicsDevice::createCommandPools()
     immediateContext->Create(GPU, queueFamilyIndices.graphicsFamily.value());
     transferContext->Create(GPU, queueFamilyIndices.transferFamily.value());
 
-    { //register descriptor pools for immediate context. eventually will be moving this to user code
+    { //register descriptor pools for immediate context. eventually (todo) will be moving this to user code
         VkDescriptorPoolSize cbPool{};
         cbPool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         cbPool.descriptorCount = 8;
@@ -408,20 +408,16 @@ void GraphicsDevice::recreateSwapChain()
     createImageViews();
     createRenderPass();
 
-    //createGraphicsPipeline();
     pPipelineState->SetRenderPass(renderPass);
-    //pPipelineState->SetDescriptorPool(ImmediateContext->GetDescriptorPool());
     pPipelineState->Build();
 
     createFramebuffers();
     
-    //TODO: recreate all device dependant resources, will need to fire an event to user code -- HERE
+    //TODO: recreate all device dependant resources, will need to fire an event to user code -- HERE (when we are actually supporting swapchain resizing 7-26-2020)
 
-    createCommandPools(); //descriptor POOL created here
+    createCommandPools();
     pPipelineState->SetDescriptorPool(immediateContext->GetDescriptorPool());
-    //createDescriptorPool();
 
-    //todo: recreate descriptor sets here.
     pPipelineState->CreateDescriptorSets();
 
     PrepareFrame();
@@ -600,9 +596,10 @@ void GraphicsDevice::ResizeFramebuffer()
 
 int GraphicsDevice::PrepareFrame()
 {
-    if(pActiveFrame) vkWaitForFences(GPU, 1, &pActiveFrame->cmdBuffer->fence, VK_TRUE, INFINITE); // 7-26-2020 this seems to fix the synchronization issue
+    //if(pActiveFrame) vkWaitForFences(GPU, 1, &pActiveFrame->cmdBuffer->fence, VK_TRUE, INFINITE); // 7-26-2020 this seems to fix the synchronization issue
 
     pActiveFrame = GetAvailableFrame();
+
     VkResult res = vkAcquireNextImageKHR(GPU, swapChain, UINT64_MAX, pActiveFrame->imageAvailable, VK_NULL_HANDLE, &imageIndex);
     pActiveFrame->frameIndex = imageIndex;
 

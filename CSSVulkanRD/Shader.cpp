@@ -22,7 +22,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 			VertexShader->entrypoint = entrypoint;
 			VertexShader->module = module;
 			VertexShader->stage = stage;
-			VertexShader->bytecode = code.data(); //unsure now necessary it will be to keep cpu copy of shader bytecode indefinitely
+			VertexShader->bytecode = code.data(); //unsure how necessary it will be to keep cpu copy of shader bytecode indefinitely
 			vertexStageExists = true;
 
 			break;
@@ -36,7 +36,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 			PixelShader->entrypoint = entrypoint;
 			PixelShader->module = module;
 			PixelShader->stage = stage;
-			PixelShader->bytecode = code.data(); //unsure now necessary it will be to keep cpu copy of shader bytecode indefinitely
+			PixelShader->bytecode = code.data(); //unsure how necessary it will be to keep cpu copy of shader bytecode indefinitely
 			fragmentStageExists = true;
 
 			break;
@@ -50,7 +50,7 @@ void Shader::LoadShader(const char* shaderFile, const char* entrypoint, VkShader
 			ComputeShader->entrypoint = entrypoint;
 			ComputeShader->module = module;
 			ComputeShader->stage = stage;
-			ComputeShader->bytecode = code.data(); //unsure now necessary it will be to keep cpu copy of shader bytecode indefinitely
+			ComputeShader->bytecode = code.data(); //unsure how necessary it will be to keep cpu copy of shader bytecode indefinitely
 			computeStageExists = true;
 
 			break;
