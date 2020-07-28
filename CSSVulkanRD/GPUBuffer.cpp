@@ -70,7 +70,6 @@ void GPUBuffer::Update(void* pData)
 		copyRegion.size = description.size;
 		vkCmdCopyBuffer(cmdBuf->handle, stagingBuffer, buffer, 1, &copyRegion);
 
-		//vkEndCommandBuffer(cmdBuf->handle);
 		cmdBuf->End();
 
 		pDevice->TransferContext->Submit(cmdBuf,true);

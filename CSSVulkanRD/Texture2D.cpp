@@ -171,7 +171,7 @@ void Texture2D::Update(void* pData)
 
 		vkCmdCopyBufferToImage(xfrCmd->handle, stagingBuffer->GetBuffer(), texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1, &region);
 		
-		//vkEndCommandBuffer(xfrCmd->handle);
+	
 		xfrCmd->End();
 		pDevice->TransferContext->Submit(xfrCmd,true);
 
@@ -314,10 +314,9 @@ void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout,
 		1, &barrier
 	);
 
-	//vkEndCommandBuffer(cmdBuf->handle);
 	cmdBuf->End();
 
-	pDevice->ImmediateContext->Submit(cmdBuf);
+	pDevice->ImmediateContext->Submit(cmdBuf,true);
 }
 
 void Texture2D::createStagingResource()

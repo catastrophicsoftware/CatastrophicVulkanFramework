@@ -408,8 +408,6 @@ void GraphicsDevice::recreateSwapChain()
     createImageViews();
     createRenderPass();
 
-    /*pPipelineState->SetRenderPass(renderPass);
-    pPipelineState->Build();*/
     recreatePipelineStateCallback();
     //TODO: fire event to user code to rebuild pipeline state
 
@@ -427,8 +425,6 @@ void GraphicsDevice::recreateSwapChain()
 
 void GraphicsDevice::DrawFrame()
 {
-    //vkWaitForFences(GPU, 1, &pActiveFrame->cmdBuffer->fence, VK_TRUE, INFINITE); //7-26-2020 --need to look into this
-
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -491,7 +487,8 @@ std::vector<const char*> GraphicsDevice::getRequiredExtensions()
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-    if (enableValidationLayers) {
+    if (enableValidationLayers)
+    {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
@@ -511,17 +508,21 @@ bool GraphicsDevice::checkValidationLayerSupport()
     std::vector<VkLayerProperties> availableLayers(layerCount);
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-    for (const char* layerName : validationLayers) {
+    for (const char* layerName : validationLayers)
+    {
         bool layerFound = false;
 
-        for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
+        for (const auto& layerProperties : availableLayers)
+        {
+            if (strcmp(layerName, layerProperties.layerName) == 0)
+            {
                 layerFound = true;
                 break;
             }
         }
 
-        if (!layerFound) {
+        if (!layerFound)
+        {
             return false;
         }
     }
@@ -686,10 +687,6 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0; // Optional
     beginInfo.pInheritanceInfo = nullptr; // Optional
-
-    //VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer->handle, &beginInfo));
-    
-    //pActiveFrame->cmdBuffer->Begin(); //7-27-2020 -- no longer beginning command buffers here
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -892,7 +889,7 @@ InflightFrame* GraphicsDevice::GetAvailableFrame()
         for (int i = 0; i < inflightFrames.size(); i++)
         {
             VkResult status = vkGetFenceStatus(GPU, inflightFrames[i]->cmdBuffer->fence);
-            if (status == VK_SUCCESS) //this command buffer is done executing on the GPU, ready for reuse
+            if (!inflightFrames[i]->cmdBuffer->recording && status == VK_SUCCESS) //this command buffer is done executing on the GPU and is not in the recording state, ready for reuse
             {
                 return inflightFrames[i];
             }
