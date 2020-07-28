@@ -117,6 +117,11 @@ bool GPUBuffer::IsDynamic() const
 	return dynamic;
 }
 
+uint32_t GPUBuffer::GetDeviceSize() const
+{
+	return description.size;
+}
+
 void GPUBuffer::createStagingBuffer()
 {
 	VkBufferCreateInfo stagingInfo = description;

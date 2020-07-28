@@ -8,16 +8,22 @@ layout(set = 0, binding = 0, std430) buffer image_data
 
 #define IMG_DIM 1024
 
+float random (in vec2 _st) {
+    return fract(sin(dot(_st.xy,
+                         vec2(12.9898,78.233)))*
+        43758.5453123);
+}
+
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 void main()
 {
     uint x = gl_GlobalInvocationID.x;
     uint y = gl_GlobalInvocationID.y;
 
-    uint red = 0xFF0000FF;
-    uint green = 0x00FFFF;
+    uint red =   0xFF0000FF;
+    uint green = 0xFFFF00FF;
 
     uint index = x + IMG_DIM * y;
 
-    image_buffer.pixels[x + IMG_DIM * y] = ((index %4) == 0) ? red : green;
+    image_buffer.pixels[index] = ((index % 2) == 0) ? red : green;
 }

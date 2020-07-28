@@ -173,7 +173,7 @@ void Texture2D::Update(void* pData)
 		
 		//vkEndCommandBuffer(xfrCmd->handle);
 		xfrCmd->End();
-		pDevice->TransferContext->Submit(xfrCmd);
+		pDevice->TransferContext->Submit(xfrCmd,true);
 
 		transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}

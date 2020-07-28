@@ -21,6 +21,8 @@ public:
 	void AllocateGPUMemory();
 
 	bool IsDynamic() const;
+
+	uint32_t GetDeviceSize() const;
 private:
 	VkBufferCreateInfo   description;
 	VkBuffer buffer;

@@ -56,10 +56,6 @@ private:
     WorldViewProjection wvp;
     Texture2D* Texture;
 
-    PipelineState* computePipeline;
-    GPUBuffer* imgBuffer;
-    Shader* computeShader;
-
     void loadTextures();
     ThreadPool* threadPool;
 };
@@ -91,16 +87,7 @@ void app::Initialize()
     shader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
     shader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    computeShader = new Shader(pGraphics->GetGPU());
-    computeShader->LoadShader("shaders\\test_compute.spv", "main", VK_SHADER_STAGE_COMPUTE_BIT);
-
-    //loadTextures();
-
-    Texture = new Texture2D(pGraphics);
-    Texture->Create(1024, 1024, VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, true);
-
-    imgBuffer = new GPUBuffer(pGraphics);
-    imgBuffer->Create(sizeof(uint32_t) * 1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE);
+    loadTextures();
 
     VertexBuffer = std::make_unique<GPUBuffer>(pGraphics);
     IndexBuffer = std::make_unique<GPUBuffer>(pGraphics);
@@ -116,11 +103,9 @@ void app::Initialize()
     cbWVP->Create(sizeof(WorldViewProjection), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
     	VK_SHARING_MODE_EXCLUSIVE, true);
 
-    imageBuffer = new GPUBuffer(pGraphics);
-    imageBuffer->Create(sizeof(glm::vec3) * (1024 * 1024),VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
     wvp.view = glm::lookAt(
-    	glm::vec3(0, 0, -0.5f), 
+    	glm::vec3(0, 0, -4), 
     	glm::vec3(0, 0, 0),    
     	glm::vec3(0, -1, 0)    
     );
@@ -147,46 +132,14 @@ void app::Update()
 
 void app::Render()
 {
-    //pGraphics->WaitForGPUIdle(); //temp hack
     int fIndex = pGraphics->PrepareFrame();
-
-    {//compute pass
-        auto cmd = pGraphics->ImmediateContext->GetCommandBuffer(true);
-        vkCmdBindPipeline(cmd->handle, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->GetPipeline());
-        auto imgBuffDescriptor = computePipeline->GetDescriptorSet(fIndex);
-        computePipeline->UpdateStorageBufferDescriptor(fIndex, 0, imgBuffer->GetBuffer(), 0, VK_WHOLE_SIZE);
-
-        vkCmdBindDescriptorSets(cmd->handle, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->GetPipelineLayout(), 0, 1, &imgBuffDescriptor, 0, nullptr);
-
-        vkCmdDispatch(cmd->handle, 32, 32, 1);
-
-        cmd->End();
-        pGraphics->ImmediateContext->Submit(cmd, true);
-    }
-
-    //texture update
-    {
-        Texture->Update(imgBuffer->GetBuffer());
-    }
 
     auto currentFrame = pGraphics->GetCurrentFrame();
     VkCommandBuffer cmd = currentFrame->cmdBuffer->handle;
-    WAIT_GPU_FENCE(currentFrame->cmdBuffer->fence);
     currentFrame->cmdBuffer->Begin();
   
     //int fIndex = pGraphics->PrepareFrame();
     pGraphics->BeginRenderPass();
-
-
-    //{//compute pass
-    //    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->GetPipeline());
-    //    auto imgBuffDescriptor = computePipeline->GetDescriptorSet(fIndex);
-    //    computePipeline->UpdateStorageBufferDescriptor(0, 0, imgBuffer->GetBuffer(), 0, VK_WHOLE_SIZE);
-
-    //    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->GetPipelineLayout(), 0, 1, &imgBuffDescriptor, 0, nullptr);
-
-    //    vkCmdDispatch(cmd, 32, 32, 1);
-    //}
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, this->Pipeline->GetPipeline());
 
@@ -316,20 +269,6 @@ void app::CreatePipelineState()
     Pipeline->CreateDescriptorSets();
 
     pGraphics->SetPipelineState(Pipeline); //maybe this shouldn't be here
-
-    computePipeline = new PipelineState(pGraphics->GetGPU(), 3);
-    computePipeline->SetShader(computeShader);
-    computePipeline->SetDescriptorPool(ImmediateContext->GetDescriptorPool());
-    
-    VkDescriptorSetLayoutBinding imageBufferBinding{};
-    imageBufferBinding.descriptorCount = 1;
-    imageBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    imageBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-    computePipeline->RegisterDescriptorSetLayoutBinding(imageBufferBinding);
-
-    computePipeline->Build(true);
-    computePipeline->CreateDescriptorSets();
 }
 
 void app::loadTextures()
