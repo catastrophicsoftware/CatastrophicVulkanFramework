@@ -14,6 +14,10 @@ void main()
     uint x = gl_GlobalInvocationID.x;
     uint y = gl_GlobalInvocationID.y;
 
-    uint color = 0xFFFFFFFF;
-    image_buffer.pixels[x + IMG_DIM * y] = color;
+    uint red = 0xFF0000FF;
+    uint green = 0x00FFFF;
+
+    uint index = x + IMG_DIM * y;
+
+    image_buffer.pixels[x + IMG_DIM * y] = ((index %4) == 0) ? red : green;
 }

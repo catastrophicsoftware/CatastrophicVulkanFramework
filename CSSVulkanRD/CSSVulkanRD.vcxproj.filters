@@ -109,13 +109,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\ps.frag">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="shaders\test_compute.comp">
       <Filter>shaders</Filter>
     </None>
     <None Include="shaders\vs.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\ps.frag">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

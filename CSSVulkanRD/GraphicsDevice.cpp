@@ -688,7 +688,8 @@ void GraphicsDevice::BeginRenderPass()
     beginInfo.pInheritanceInfo = nullptr; // Optional
 
     //VULKAN_CALL(vkBeginCommandBuffer(pActiveFrame->cmdBuffer->handle, &beginInfo));
-    pActiveFrame->cmdBuffer->Begin();
+    
+    //pActiveFrame->cmdBuffer->Begin(); //7-27-2020 -- no longer beginning command buffers here
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

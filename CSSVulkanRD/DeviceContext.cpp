@@ -168,7 +168,7 @@ void DeviceContext::PipelineExecutionBarrier(VkPipelineStageFlagBits sourceStage
 
     barrierBuffer->End();
 
-    Submit(barrierBuffer);
+    Submit(barrierBuffer,true);
 }
 
 CommandBuffer* DeviceContext::createCommandBuffer(bool begin)

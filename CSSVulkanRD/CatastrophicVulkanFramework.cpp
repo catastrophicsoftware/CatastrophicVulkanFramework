@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "DeviceContext.h"
 
+
 void CatastrophicVulkanFrameworkApplication::Run()
 {
 	InitializeApplicationWindow(800, 600);
@@ -75,6 +76,8 @@ void CatastrophicVulkanFrameworkApplication::InitializeGraphicsSubsystem()
 {
 	pGraphics = new GraphicsDevice(ApplicationWindow);
 	pGraphics->InitializeVulkan();
+
+	ImmediateContext = pGraphics->ImmediateContext;
 }
 
 void CatastrophicVulkanFrameworkApplication::InitializeFramebufferResizeHooks()

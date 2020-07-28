@@ -181,7 +181,13 @@
     <ClInclude Include="VertexTypes.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\ps.frag" />
+    <None Include="shaders\ps.frag">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Outputs>
+    </None>
     <None Include="shaders\test_compute.comp" />
     <None Include="shaders\vs.vert" />
   </ItemGroup>

@@ -2,10 +2,12 @@
 #include "includes.h"
 
 class GraphicsDevice;
+class DeviceContext;
 
 class CatastrophicVulkanFrameworkApplication
 {
 public:
+
 	void Run();
 protected:
 	virtual void Initialize() = 0;
@@ -14,6 +16,10 @@ protected:
 	virtual void DestroyResources() = 0;
 
 	GraphicsDevice* pGraphics;
+	
+	shared_ptr<DeviceContext> ImmediateContext;
+
+	VkDevice GPU;
 private:
 	GLFWwindow* ApplicationWindow;
 

@@ -179,6 +179,38 @@ void Texture2D::Update(void* pData)
 	}
 }
 
+void Texture2D::Update(VkBuffer srcBuffer)
+{
+	transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	auto xfrCmd = pDevice->GetTransferContext()->GetCommandBuffer(true);
+
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+
+	region.imageOffset = { 0, 0, 0 };
+	region.imageExtent = {
+		width,
+		height,
+		1
+	};
+
+	vkCmdCopyBufferToImage(xfrCmd->handle, srcBuffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	//vkEndCommandBuffer(xfrCmd->handle);
+	xfrCmd->End();
+	pDevice->TransferContext->Submit(xfrCmd,true);
+
+	transitionImageLayout(desc.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
 VkImage Texture2D::GetTexture() const
 {
 	return texture;

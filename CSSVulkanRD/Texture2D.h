@@ -20,10 +20,13 @@ public:
 	virtual void Destroy() override;
 	virtual void AllocateGPUMemory() override;
 	virtual void Update(void* pData) override;
+	void Update(VkBuffer srcBuffer);
 
 	VkImage GetTexture() const;
 	VkImageView GetImageView() const;
 	VkSampler GetSampler() const;
+
+	void transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout);
 private:
 	VkImage texture;
 	GPUBuffer* stagingBuffer;
@@ -35,8 +38,6 @@ private:
 
 	void createSampler();
 	void createImageView();
-
-	void transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout);
 
 	VmaAllocation textureMem;
 	VmaAllocation stagingTextureMem;
