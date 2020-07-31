@@ -17,16 +17,6 @@
 #include "Texture2D.h"
 #include "EngineThreadPool.h"
 
-const std::vector<VertexPositionTexture> vertices = {
-    {{-0.5f, -0.5f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f},  {1.0f, 0.0f}},
-    {{0.5f, 0.5f },   {1.0f, 1.0f}},
-    {{-0.5f, 0.5f},  {0.0f, 1.0f}}
-};
-
-    const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
-    };
 
 struct WorldViewProjection
 {
@@ -46,17 +36,8 @@ public:
     void CreatePipelineState(); //todo: bring this into the CatastrophicVulkanFrameworkApplication class
 private:
     PipelineState* Pipeline;
-    std::unique_ptr<GPUBuffer> VertexBuffer;
-    std::unique_ptr<GPUBuffer> IndexBuffer;
-    std::unique_ptr<GPUBuffer> cbWVP;
+    Shader* simpleShader;
 
-    GPUBuffer* imageBuffer;
-
-    Shader* shader;
-    WorldViewProjection wvp;
-    Texture2D* Texture;
-
-    void loadTextures();
     ThreadPool* threadPool;
 };
 
@@ -76,50 +57,14 @@ int main()
     return EXIT_SUCCESS;
 }
 
-void test_func(void* pArg)
-{
-    MessageBox(0, L"thread pool test", L"thread pool test", MB_OK);
-}
-
 void app::Initialize()
 {
-    shader = new Shader(pGraphics->GetGPU());
-    shader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
-    shader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    loadTextures();
-
-    VertexBuffer = std::make_unique<GPUBuffer>(pGraphics);
-    IndexBuffer = std::make_unique<GPUBuffer>(pGraphics);
-    cbWVP = std::make_unique<GPUBuffer>(pGraphics);
-
-    VertexBuffer->Create(sizeof(vertices[0]) * vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-    	VK_SHARING_MODE_EXCLUSIVE);
-    VertexBuffer->Update((void*)vertices.data());
-
-    IndexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
-    IndexBuffer->Update((void*)indices.data());
-
-    cbWVP->Create(sizeof(WorldViewProjection), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-    	VK_SHARING_MODE_EXCLUSIVE, true);
-
-
-    wvp.view = glm::lookAt(
-    	glm::vec3(0, 0, -4), 
-    	glm::vec3(0, 0, 0),    
-    	glm::vec3(0, -1, 0)    
-    );
-
-    wvp.projection = glm::perspective(glm::radians(45.0f), 800 / (float)600, 0.1f, 1000.0f);
-    wvp.projection[1][1] *= -1;
-    wvp.world = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-    auto gpu_mem = cbWVP->Map();
-    memcpy(gpu_mem, &wvp, sizeof(WorldViewProjection));
-    cbWVP->UnMap();
-
     std::function<void()> callback = std::bind(&app::CreatePipelineState, this);
     pGraphics->SetPipelineStateRecreateCallback(callback);
+
+    simpleShader = new Shader(pGraphics->GetGPU());
+    simpleShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
+    simpleShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     CreatePipelineState();
 }
@@ -143,20 +88,6 @@ void app::Render()
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, this->Pipeline->GetPipeline());
 
-    VkDeviceSize offsets[] = { 0 };
-    VkBuffer binding[] = { VertexBuffer->GetBuffer() };
-    vkCmdBindVertexBuffers(cmd, 0, 1,binding, offsets);
-    vkCmdBindIndexBuffer(cmd, IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-
-    pGraphics->GetPipelineState()->UpdateUniformBufferDescriptor(fIndex, 0, cbWVP->GetBuffer(), 0, sizeof(WorldViewProjection));
-    pGraphics->GetPipelineState()->UpdateCombinedImageDescriptor(fIndex, 1, Texture->GetImageView(), Texture->GetSampler());
-
-    VkDescriptorSet currentDescriptor = pGraphics->GetPipelineState()->GetDescriptorSet(fIndex);
-    vkCmdBindDescriptorSets(cmd,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pGraphics->GetPipelineState()->GetPipelineLayout(), 0, 1, &currentDescriptor, 0, nullptr);
-
-    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
     pGraphics->EndRenderPass(); //begin and end pass is the process of recording "main" command buffer
 
@@ -248,31 +179,14 @@ void app::CreatePipelineState()
     Pipeline->SetPrimitiveRestartEnable(VK_FALSE);
     Pipeline->SetRenderPass(pGraphics->GetRenderPass());
     Pipeline->SetDescriptorPool(ImmediateContext->GetDescriptorPool());
-    Pipeline->SetShader(shader);
+    Pipeline->SetShader(simpleShader); 
 
-    VkDescriptorSetLayoutBinding wvpBinding{};
 
-    wvpBinding.binding = 0;
-    wvpBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    wvpBinding.descriptorCount = 1;
-    wvpBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    //TODO: create descriptor set layout bindings here
 
-    VkDescriptorSetLayoutBinding samplerBinding{};
-    samplerBinding.binding = 1;
-    samplerBinding.descriptorCount = 1;
-    samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    Pipeline->RegisterDescriptorSetLayoutBinding(wvpBinding);
-    Pipeline->RegisterDescriptorSetLayoutBinding(samplerBinding);
     Pipeline->Build();
     Pipeline->CreateDescriptorSets();
 
     pGraphics->SetPipelineState(Pipeline); //maybe this shouldn't be here
-}
-
-void app::loadTextures()
-{
-    Texture = new Texture2D(pGraphics);
-    Texture->CreateFromFile("textures\\test_grid.png", true);
 }

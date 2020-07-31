@@ -18,8 +18,6 @@ protected:
 	GraphicsDevice* pGraphics;
 	
 	shared_ptr<DeviceContext> ImmediateContext;
-
-	VkDevice GPU;
 private:
 	GLFWwindow* ApplicationWindow;
 
