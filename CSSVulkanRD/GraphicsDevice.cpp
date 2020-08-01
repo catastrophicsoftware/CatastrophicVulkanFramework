@@ -4,6 +4,7 @@
 #include "GPUMemoryManager.h"
 #include "DeviceContext.h"
 #include "PipelineState.h"
+#include "RenderPass.h"
 
 GraphicsDevice::GraphicsDevice(GLFWwindow* pAppWindow)
 {
@@ -69,7 +70,7 @@ void GraphicsDevice::cleanupSwapchain()
     transferContext->Destroy();
 
     pPipelineState->Destroy();
-    vkDestroyRenderPass(GPU, renderPass, nullptr);
+    primaryRenderPass->Destroy();
 
     for (int i = 0; i < inflightFrames.size(); i++) //clear out inflight frame list
     {
@@ -297,45 +298,8 @@ void GraphicsDevice::createImageViews()
 
 void GraphicsDevice::createRenderPass()
 {
-    VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = swapChainImageFormat;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    VkAttachmentReference colorAttachmentRef{};
-
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
-
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &dependency;
-
-    VULKAN_CALL_ERROR(vkCreateRenderPass(GPU, &renderPassInfo, nullptr, &renderPass), "failed to create render pass");
+    primaryRenderPass = new RenderPass(this);
+    primaryRenderPass->Create(swapChainImageFormat, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
 }
 
 void GraphicsDevice::createFramebuffers()
@@ -351,7 +315,7 @@ void GraphicsDevice::createFramebuffers()
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = renderPass;
+        framebufferInfo.renderPass = primaryRenderPass->GetRenderPassHandle();
         framebufferInfo.attachmentCount = 1;
         framebufferInfo.pAttachments = attachments;
         framebufferInfo.width = swapChainExtent.width;
@@ -378,13 +342,13 @@ void GraphicsDevice::createCommandPools()
         sbPool.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         sbPool.descriptorCount = 8;
 
-        VkDescriptorPoolSize cisPool{};
-        cisPool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        cisPool.descriptorCount = 8;
+        VkDescriptorPoolSize imageSamplerPool{};
+        imageSamplerPool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        imageSamplerPool.descriptorCount = 8;
 
         immediateContext->RegisterDescriptorPoolSize(cbPool);
         immediateContext->RegisterDescriptorPoolSize(sbPool);
-        immediateContext->RegisterDescriptorPoolSize(cisPool);
+        immediateContext->RegisterDescriptorPoolSize(imageSamplerPool);
         immediateContext->CreateDescriptorPool(16);
     }
 
@@ -550,10 +514,15 @@ VkExtent2D GraphicsDevice::GetSwapchainExtent() const
     return swapChainExtent;
 }
 
-VkRenderPass GraphicsDevice::GetRenderPass() const
+RenderPass* GraphicsDevice::GetRenderPass() const
 {
-    return renderPass;
+    return primaryRenderPass;
 }
+
+//VkRenderPass GraphicsDevice::GetRenderPass() const
+//{
+//    return renderPass;
+//}
 
 PipelineState* GraphicsDevice::GetPipelineState() const
 {
@@ -683,32 +652,35 @@ std::shared_ptr<DeviceContext> GraphicsDevice::CreateDeviceContext(VkQueueFlags 
 
 void GraphicsDevice::BeginRenderPass()
 {
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = 0; // Optional
-    beginInfo.pInheritanceInfo = nullptr; // Optional
+    VkRect2D renderArea{};
+    renderArea.offset = { 0,0 };
+    renderArea.extent = swapChainExtent;
+    primaryRenderPass->BeginRenderPass(swapChainFramebuffers[imageIndex], pActiveFrame->cmdBuffer, renderArea);
 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-    renderPassInfo.renderArea.offset = { 0, 0 };
-    renderPassInfo.renderArea.extent = swapChainExtent;
+    ////VkCommandBufferBeginInfo beginInfo{};
+    ////beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    ////beginInfo.flags = 0; // Optional
+    ////beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    VkClearValue clearColor = { 0.100f, 0.149f, 0.255f, 1.0f };
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues = &clearColor;
+    //VkRenderPassBeginInfo renderPassInfo{};
+    //renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    //renderPassInfo.renderPass = renderPass;
+    //renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+    //renderPassInfo.renderArea.offset = { 0, 0 };
+    //renderPassInfo.renderArea.extent = swapChainExtent;
 
-    vkCmdBeginRenderPass(pActiveFrame->cmdBuffer->handle, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    ///*VkClearValue clearColor = { 0.100f, 0.149f, 0.255f, 1.0f };
+    //renderPassInfo.clearValueCount = 1;
+    //renderPassInfo.pClearValues = &clearColor;*/ //THIS APPEARS TO DO NOTHING
 
-    vkCmdBindPipeline(pActiveFrame->cmdBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipelineState->GetPipeline());
+    //vkCmdBeginRenderPass(pActiveFrame->cmdBuffer->handle, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    //vkCmdBindPipeline(pActiveFrame->cmdBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipelineState->GetPipeline()); //TODO: determine if this needs to be here
 }
 
 void GraphicsDevice::EndRenderPass()
 {
-    vkCmdEndRenderPass(pActiveFrame->cmdBuffer->handle);
-    //VULKAN_CALL(vkEndCommandBuffer(pActiveFrame->cmdBuffer->handle));
-    pActiveFrame->cmdBuffer->End();
+    primaryRenderPass->EndRenderPass(true);
 }
 
 void GraphicsDevice::WaitForGPUIdle()

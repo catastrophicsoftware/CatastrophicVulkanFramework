@@ -16,6 +16,7 @@
 #include "VertexTypes.h"
 #include "Texture2D.h"
 #include "EngineThreadPool.h"
+#include "RenderPass.h"
 
 
 struct WorldViewProjection
@@ -46,10 +47,12 @@ int main()
 {
     app* pApp = new app();
 
-    try {
+    try
+    {
         pApp->Run();
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
@@ -73,8 +76,6 @@ void app::Update()
 {
 }
 
-#define WAIT_GPU_FENCE(fence){if(vkGetFenceStatus(pGraphics->GetGPU(),fence) != VK_SUCCESS){vkWaitForFences(pGraphics->GetGPU(),1,&fence,VK_TRUE,INFINITE);}}
-
 void app::Render()
 {
     int fIndex = pGraphics->PrepareFrame();
@@ -83,7 +84,6 @@ void app::Render()
     VkCommandBuffer cmd = currentFrame->cmdBuffer->handle;
     currentFrame->cmdBuffer->Begin();
   
-    //int fIndex = pGraphics->PrepareFrame();
     pGraphics->BeginRenderPass();
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, this->Pipeline->GetPipeline());
@@ -177,7 +177,7 @@ void app::CreatePipelineState()
     Pipeline->SetBlendState(blendState);
     Pipeline->SetPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     Pipeline->SetPrimitiveRestartEnable(VK_FALSE);
-    Pipeline->SetRenderPass(pGraphics->GetRenderPass());
+    Pipeline->SetRenderPass(pGraphics->GetRenderPass()->GetRenderPassHandle());
     Pipeline->SetDescriptorPool(ImmediateContext->GetDescriptorPool());
     Pipeline->SetShader(simpleShader); 
 

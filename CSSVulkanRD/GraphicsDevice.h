@@ -36,6 +36,7 @@ class GPUMemoryManager;
 class DeviceContext;
 struct InflightFrame;
 class PipelineState;
+class RenderPass;
 
 class GraphicsDevice
 {
@@ -80,7 +81,7 @@ public:
 
     uint32_t       GetSwapchainFramebufferCount() const;
     VkExtent2D     GetSwapchainExtent() const;
-    VkRenderPass   GetRenderPass() const;
+    RenderPass*   GetRenderPass() const;
     PipelineState* GetPipelineState() const;
 
     void SetPipelineStateRecreateCallback(std::function<void()> callback);
@@ -97,7 +98,9 @@ private:
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
 
-    VkRenderPass renderPass;
+    //VkRenderPass renderPass;
+    RenderPass* primaryRenderPass;
+
 
     PipelineState* pPipelineState;
 

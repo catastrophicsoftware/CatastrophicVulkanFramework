@@ -158,6 +158,7 @@
     <ClCompile Include="GPUBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PipelineState.cpp" />
+    <ClCompile Include="RenderPass.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="stbImpl.cpp" />
     <ClCompile Include="Texture2D.cpp" />
@@ -175,6 +176,7 @@
     <ClInclude Include="GPUBuffer.h" />
     <ClInclude Include="includes.h" />
     <ClInclude Include="PipelineState.h" />
+    <ClInclude Include="RenderPass.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture2D.h" />
