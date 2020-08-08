@@ -69,7 +69,7 @@ void GraphicsDevice::cleanupSwapchain()
     immediateContext->Destroy();
     transferContext->Destroy();
 
-    pPipelineState->Destroy();
+    //pPipelineState->Destroy();
     primaryRenderPass->Destroy();
 
     for (int i = 0; i < inflightFrames.size(); i++) //clear out inflight frame list
@@ -336,15 +336,15 @@ void GraphicsDevice::createCommandPools()
     { //register descriptor pools for immediate context. eventually (todo) will be moving this to user code
         VkDescriptorPoolSize cbPool{};
         cbPool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        cbPool.descriptorCount = 8;
+        cbPool.descriptorCount = 16;
 
         VkDescriptorPoolSize sbPool{};
         sbPool.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        sbPool.descriptorCount = 8;
+        sbPool.descriptorCount = 16;
 
         VkDescriptorPoolSize imageSamplerPool{};
         imageSamplerPool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imageSamplerPool.descriptorCount = 8;
+        imageSamplerPool.descriptorCount = 16;
 
         immediateContext->RegisterDescriptorPoolSize(cbPool);
         immediateContext->RegisterDescriptorPoolSize(sbPool);
@@ -380,9 +380,10 @@ void GraphicsDevice::recreateSwapChain()
     //TODO: recreate all device dependant resources, will need to fire an event to user code -- HERE (when we are actually supporting swapchain resizing 7-26-2020)
 
     createCommandPools();
-    pPipelineState->SetDescriptorPool(immediateContext->GetDescriptorPool());
 
-    pPipelineState->CreateDescriptorSets();
+    //pPipelineState->SetDescriptorPool(immediateContext->GetDescriptorPool());
+
+    //pPipelineState->CreateDescriptorSets();
 
     PrepareFrame();
 }

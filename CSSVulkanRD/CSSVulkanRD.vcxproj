@@ -160,6 +160,7 @@
     <ClCompile Include="PipelineState.cpp" />
     <ClCompile Include="RenderPass.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="SpriteRenderer.cpp" />
     <ClCompile Include="stbImpl.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="VertexTypes.cpp" />
@@ -178,6 +179,7 @@
     <ClInclude Include="PipelineState.h" />
     <ClInclude Include="RenderPass.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="SpriteRenderer.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexTypes.h" />
@@ -190,6 +192,8 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </Outputs>
     </None>
+    <None Include="shaders\sprite.frag" />
+    <None Include="shaders\sprite.vert" />
     <None Include="shaders\test_compute.comp" />
     <None Include="shaders\vs.vert" />
   </ItemGroup>

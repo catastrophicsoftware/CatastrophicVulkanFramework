@@ -17,6 +17,7 @@
 #include "Texture2D.h"
 #include "EngineThreadPool.h"
 #include "RenderPass.h"
+#include "SpriteRenderer.h"
 
 
 struct WorldViewProjection
@@ -36,10 +37,15 @@ public:
 
     void CreatePipelineState(); //todo: bring this into the CatastrophicVulkanFrameworkApplication class
 private:
-    PipelineState* Pipeline;
     Shader* simpleShader;
 
+    SpriteRenderer* spriteRenderer;
+
     ThreadPool* threadPool;
+    
+    void recreatePipelineState();
+
+    Texture2D* spriteTexture;
 };
 
 
@@ -65,11 +71,17 @@ void app::Initialize()
     std::function<void()> callback = std::bind(&app::CreatePipelineState, this);
     pGraphics->SetPipelineStateRecreateCallback(callback);
 
-    simpleShader = new Shader(pGraphics->GetGPU());
-    simpleShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
-    simpleShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
+    //simpleShader = new Shader(pGraphics->GetGPU());
+    //simpleShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
+    //simpleShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    CreatePipelineState();
+    //CreatePipelineState();
+
+    spriteTexture = new Texture2D(pGraphics);
+    spriteTexture->CreateFromFile("textures\\spriteTexture.png", true);
+
+    spriteRenderer = new SpriteRenderer(pGraphics);
+    spriteRenderer->Initialize(pGraphics->GetSwapchainExtent().width, pGraphics->GetSwapchainExtent().height, pGraphics->GetSwapchainFramebufferCount());
 }
 
 void app::Update()
@@ -81,13 +93,16 @@ void app::Render()
     int fIndex = pGraphics->PrepareFrame();
 
     auto currentFrame = pGraphics->GetCurrentFrame();
+    auto gpuCMD = currentFrame->cmdBuffer;
     VkCommandBuffer cmd = currentFrame->cmdBuffer->handle;
     currentFrame->cmdBuffer->Begin();
   
     pGraphics->BeginRenderPass();
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, this->Pipeline->GetPipeline());
-
+    spriteRenderer->BeginSpriteRenderPass(fIndex);
+    spriteRenderer->RenderSprite(gpuCMD,spriteTexture, glm::vec2(200.0f, 200.0f), 0.0f);
+    spriteRenderer->RenderSprite(gpuCMD, spriteTexture, glm::vec2(200.0f, 200.0f), 0.0f);
+    spriteRenderer->EndSpriteRenderPass();
 
     pGraphics->EndRenderPass(); //begin and end pass is the process of recording "main" command buffer
 
@@ -103,90 +118,98 @@ void app::DestroyResources()
 
 void app::CreatePipelineState()
 {
-    Pipeline = new PipelineState(pGraphics->GetGPU(), pGraphics->GetSwapchainFramebufferCount());
 
-    auto swapExt = pGraphics->GetSwapchainExtent();
-    VkViewport viewport{};
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.width = (float)swapExt.width;
-    viewport.height = (float)swapExt.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    //Pipeline = new PipelineState(pGraphics->GetGPU(), pGraphics->GetSwapchainFramebufferCount());
 
-    Pipeline->SetViewport(viewport);
+    //auto swapExt = pGraphics->GetSwapchainExtent();
+    //VkViewport viewport{};
+    //viewport.x = 0;
+    //viewport.y = 0;
+    //viewport.width = (float)swapExt.width;
+    //viewport.height = (float)swapExt.height;
+    //viewport.minDepth = 0.0f;
+    //viewport.maxDepth = 1.0f;
 
-    VertexInputData vsInputData;
-    vsInputData.vertexBindingDesc = VertexPositionTexture::GetBindingDescription();
-    std::vector<VkVertexInputAttributeDescription> vertexAttrDesc = { VertexPositionTexture::GetVertexAttributeDescriptions()[0],VertexPositionTexture::GetVertexAttributeDescriptions()[1] }; //HACK!
-    vsInputData.vertexInputAttributeDescriptions = vertexAttrDesc;
+    //Pipeline->SetViewport(viewport);
 
-    Pipeline->SetVertexInput(vsInputData);
-    VkRect2D scissor{};
-    scissor.offset = { 0,0 };
-    scissor.extent = pGraphics->GetSwapchainExtent();
+    //VertexInputData vsInputData;
+    //vsInputData.vertexBindingDesc = VertexPositionTexture::GetBindingDescription();
+    //std::vector<VkVertexInputAttributeDescription> vertexAttrDesc = { VertexPositionTexture::GetVertexAttributeDescriptions()[0],VertexPositionTexture::GetVertexAttributeDescriptions()[1] }; //HACK!
+    //vsInputData.vertexInputAttributeDescriptions = vertexAttrDesc;
 
-    Pipeline->SetScissor(scissor);
+    //Pipeline->SetVertexInput(vsInputData);
+    //VkRect2D scissor{};
+    //scissor.offset = { 0,0 };
+    //scissor.extent = pGraphics->GetSwapchainExtent();
 
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterizer.depthBiasEnable = VK_FALSE;
-    rasterizer.lineWidth = 1.0f;
+    //Pipeline->SetScissor(scissor);
 
-    Pipeline->SetRasterizerState(rasterizer);
+    //VkPipelineRasterizationStateCreateInfo rasterizer{};
+    //rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    //rasterizer.depthClampEnable = VK_FALSE;
+    //rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    //rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    //rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    //rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    //rasterizer.depthBiasEnable = VK_FALSE;
+    //rasterizer.lineWidth = 1.0f;
 
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    //Pipeline->SetRasterizerState(rasterizer);
 
-    Pipeline->SetMultisamplingState(multisampling);
+    //VkPipelineMultisampleStateCreateInfo multisampling{};
+    //multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    //multisampling.sampleShadingEnable = VK_FALSE;
+    //multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    //Pipeline->SetMultisamplingState(multisampling);
 
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_TRUE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    //VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 
-
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
-    colorBlending.blendConstants[0] = 0.0f; // Optional
-    colorBlending.blendConstants[1] = 0.0f; // Optional
-    colorBlending.blendConstants[2] = 0.0f; // Optional
-    colorBlending.blendConstants[3] = 0.0f; // Optional
-
-    BlendState blendState;
-    blendState.blendState = colorBlending;
-    blendState.colorBlendAttachment = colorBlendAttachment;
-
-    Pipeline->SetBlendState(blendState);
-    Pipeline->SetPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    Pipeline->SetPrimitiveRestartEnable(VK_FALSE);
-    Pipeline->SetRenderPass(pGraphics->GetRenderPass()->GetRenderPassHandle());
-    Pipeline->SetDescriptorPool(ImmediateContext->GetDescriptorPool());
-    Pipeline->SetShader(simpleShader); 
+    //colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    //colorBlendAttachment.blendEnable = VK_TRUE;
+    //colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    //colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    //colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    //colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    //colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    //colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 
-    //TODO: create descriptor set layout bindings here
+    //VkPipelineColorBlendStateCreateInfo colorBlending{};
+    //colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    //colorBlending.logicOpEnable = VK_FALSE;
+    //colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+    //colorBlending.attachmentCount = 1;
+    //colorBlending.pAttachments = &colorBlendAttachment;
+    //colorBlending.blendConstants[0] = 0.0f; // Optional
+    //colorBlending.blendConstants[1] = 0.0f; // Optional
+    //colorBlending.blendConstants[2] = 0.0f; // Optional
+    //colorBlending.blendConstants[3] = 0.0f; // Optional
+
+    //BlendState blendState;
+    //blendState.blendState = colorBlending;
+    //blendState.colorBlendAttachment = colorBlendAttachment;
+
+    //Pipeline->SetBlendState(blendState);
+    //Pipeline->SetPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    //Pipeline->SetPrimitiveRestartEnable(VK_FALSE);
+    //Pipeline->SetRenderPass(pGraphics->GetRenderPass()->GetRenderPassHandle());
+    //Pipeline->SetDescriptorPool(ImmediateContext->GetDescriptorPool());
+    //Pipeline->SetShader(simpleShader); 
 
 
-    Pipeline->Build();
-    Pipeline->CreateDescriptorSets();
+    ////TODO: create descriptor set layout bindings here
 
-    pGraphics->SetPipelineState(Pipeline); //maybe this shouldn't be here
+
+    //Pipeline->Build();
+    //Pipeline->CreateDescriptorSets();
+
+    //pGraphics->SetPipelineState(Pipeline); //maybe this shouldn't be here
+
+    spriteRenderer->RecreatePipelineState();
+}
+
+void app::recreatePipelineState()
+{
+    spriteRenderer->RecreatePipelineState();
 }
