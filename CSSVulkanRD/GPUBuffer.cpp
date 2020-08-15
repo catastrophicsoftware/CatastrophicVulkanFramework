@@ -121,6 +121,11 @@ uint32_t GPUBuffer::GetDeviceSize() const
 	return description.size;
 }
 
+VkDeviceSize GPUBuffer::GetBufferAlignment() const
+{
+	return gpuMemory->GetAlignment();
+}
+
 void GPUBuffer::createStagingBuffer()
 {
 	VkBufferCreateInfo stagingInfo = description;
