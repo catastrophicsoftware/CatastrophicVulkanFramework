@@ -38,62 +38,44 @@ void SpriteRenderer::Initialize(int windowWidth, int windowHeight, int swapchain
 
     createPipelineState();
 	createBuffers();
+    createSpriteSampler();
 }
 
 void SpriteRenderer::RenderSprite(Texture2D* Sprite, glm::vec2 position, float rotation)
 {
     if (!spritePipelineBound)
     {
-        vkCmdBindPipeline(spriteCMD->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline->GetPipeline());
+        vkCmdBindPipeline(pActiveSpriteCMD->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline->GetPipeline());
         spritePipelineBound = true;
     }
 
     spriteTransform = glm::translate(spriteTransform, glm::vec3(position, 1));
 
+    uint32_t cbTransformOffset = sizeof(glm::mat4) * frameIndex;
     memcpy(pTransformBufferGPUMemory, &spriteTransform, sizeof(glm::mat4));
 
-    spritePipeline->UpdateUniformBufferDescriptor(frameIndex, 1, cbSpriteTransform->GetBuffer(), 0, VK_WHOLE_SIZE);
-    
-    spritePipeline->UpdateCombinedImageDescriptor(frameIndex, 2, Sprite->GetImageView(), Sprite->GetSampler()); //TODO: give the sprite renderer it's own sampler
-    
-    VkDescriptorSet spriteDescriptorSet = spritePipeline->GetDescriptorSet(frameIndex);
+    int id = Sprite->GetID();
 
-    vkCmdBindDescriptorSets(spriteCMD->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline->GetPipelineLayout(), 0, 1, &spriteDescriptorSet, 0, nullptr);
+    vkCmdPushConstants(pActiveSpriteCMD->handle, spritePipeline->GetPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int), &id);
     VkBuffer vb = vertexBuffer->GetBuffer();
     VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(spriteCMD->handle, 0, 1,&vb, &offset);
-    vkCmdBindIndexBuffer(spriteCMD->handle, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(pActiveSpriteCMD->handle, 0, 1,&vb, &offset);
+    vkCmdBindIndexBuffer(pActiveSpriteCMD->handle, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
-    vkCmdDrawIndexed(spriteCMD->handle, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(pActiveSpriteCMD->handle, 6, 1, 0, 0, 0);
 }
 
-void SpriteRenderer::RenderSprite(CommandBuffer* gpuCommandBuffer, Texture2D* Sprite, glm::vec2 position, float rotation)
-{
-    vkCmdBindPipeline(gpuCommandBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline->GetPipeline());
-
-    spriteTransform = glm::translate(spriteTransform, glm::vec3(position, 1));
-
-    memcpy(pTransformBufferGPUMemory, &spriteTransform, sizeof(glm::mat4));
-
-    spritePipeline->UpdateUniformBufferDescriptor(frameIndex, 1, cbSpriteTransform->GetBuffer(), 0, VK_WHOLE_SIZE);
-    spritePipeline->UpdateCombinedImageDescriptor(frameIndex, 2, Sprite->GetImageView(), Sprite->GetSampler()); //TODO: give the sprite renderer it's own sampler
-
-    VkDescriptorSet spriteDescriptorSet = spritePipeline->GetDescriptorSet(frameIndex);
-
-    vkCmdBindDescriptorSets(gpuCommandBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline->GetPipelineLayout(), 0, 1, &spriteDescriptorSet, 0, nullptr);
-    VkBuffer vb = vertexBuffer->GetBuffer();
-    VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(gpuCommandBuffer->handle, 0, 1, &vb, &offset);
-    vkCmdBindIndexBuffer(gpuCommandBuffer->handle, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-
-    vkCmdDrawIndexed(gpuCommandBuffer->handle, 6, 1, 0, 0, 0);
-}
-
-void SpriteRenderer::BeginSpriteRenderPass(uint32_t frameIndex)
+void SpriteRenderer::BeginSpriteRenderPass(CommandBuffer* pGPUCommandBuffer, uint32_t frameIndex)
 {
 	if (!spriteRenderPassActive)
 	{
         this->frameIndex = frameIndex;
+        pActiveSpriteCMD = pGPUCommandBuffer;
+        spriteFences.push_back(pActiveSpriteCMD->fence); //store fence
+
+        VkDescriptorSet spriteDescriptorSet = spritePipeline->GetDescriptorSet(frameIndex);
+        vkCmdBindDescriptorSets(pActiveSpriteCMD->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline->GetPipelineLayout(), 0, 1, &spriteDescriptorSet, 0, nullptr);
+
 		spriteRenderPassActive = true;
 	}
 }
@@ -103,8 +85,8 @@ void SpriteRenderer::EndSpriteRenderPass(bool submit)
 	if (spriteRenderPassActive)
 	{
 		//spriteCMD->End();
-		if (submit)
-			pDevice->ImmediateContext->Submit(spriteCMD,true); //TODO: figure out if we need to block here
+		//if (submit)
+		//	pDevice->ImmediateContext->Submit(spriteCMD,true); //TODO: figure out if we need to block here
 
 		spriteRenderPassActive = false;
         spritePipelineBound = false;
@@ -123,6 +105,40 @@ void SpriteRenderer::RecreatePipelineState()
     createPipelineState();
 }
 
+void SpriteRenderer::SetSprites(std::vector<Texture2D*> sprite_set)
+{
+    assert(sprite_set.size() <= SPRITE_ARRAY_SIZE);
+
+    if (spriteFences.size() > 0) //wait for all sprite command buffers to complete before updating sprite array descriptor
+    {
+        VkFence* fences = spriteFences.data();
+        vkWaitForFences(pDevice->GetGPU(), spriteFences.size(), fences, VK_TRUE, INFINITE);
+        spriteFences.clear();
+    }
+
+    int filled_sets = sprite_set.size();
+    int empty_sets = SPRITE_ARRAY_SIZE - filled_sets;
+
+    std::vector<VkImageView> imageViews;
+
+    int s = 0;
+    for (s = 0; s < filled_sets; ++s)
+    {
+        imageViews.push_back(sprite_set[s]->GetImageView()); //fill populated sets
+        sprite_set[s]->SetID(s);
+    }
+    for (s = s; s < empty_sets; ++s)
+    {
+        imageViews.push_back(nullTexture->GetImageView()); //fill empty sets will 1x1 "null texture"
+    }
+
+
+    for (int i = 0; i < pDevice->GetSwapchainFramebufferCount(); ++i)
+    {
+        spritePipeline->UpdateSampledImageDescriptor(i, 3, imageViews);
+    }
+}
+
 void SpriteRenderer::updateCameraTransform()
 {
 }
@@ -134,12 +150,10 @@ void SpriteRenderer::createBuffers()
     cbProjection->Create(sizeof(glm::mat4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
     cameraTransform = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
     cbProjection->Update(&cameraTransform);
-
     
     for (int i = 0; i < pDevice->GetSwapchainFramebufferCount(); ++i) //write all 3 projection transform descriptors
         spritePipeline->UpdateUniformBufferDescriptor(i, 0, cbProjection->GetBuffer(), 0, VK_WHOLE_SIZE);
 
-	cbProjection->Update(&cameraTransform);
 
 	cbSpriteTransform = new GPUBuffer(pDevice);
 	cbSpriteTransform->Create(sizeof(glm::mat4) * swapchainFramebufferCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, true);
@@ -152,6 +166,9 @@ void SpriteRenderer::createBuffers()
     indexBuffer = new GPUBuffer(pDevice);
     indexBuffer->Create(sizeof(uint16_t) * 6, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
     indexBuffer->Update(&spriteIndices);
+
+    nullTexture = new Texture2D(pDevice);
+    nullTexture->Create(1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 }
 
 void SpriteRenderer::createPipelineState()
@@ -242,26 +259,68 @@ void SpriteRenderer::createPipelineState()
     VkDescriptorSetLayoutBinding spriteTransformBinding{};
     spriteTransformBinding.descriptorCount = 1;
     spriteTransformBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    spriteTransformBinding.binding = 0;
+    spriteTransformBinding.binding = 1;
     spriteTransformBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayoutBinding cameraTransformBinding{};
     cameraTransformBinding.descriptorCount = 1;
     cameraTransformBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cameraTransformBinding.binding = 1;
+    cameraTransformBinding.binding = 0;
     cameraTransformBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayoutBinding spriteSampler{};
     spriteSampler.binding = 2;
     spriteSampler.descriptorCount = 1;
     spriteSampler.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    spriteSampler.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    spriteSampler.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 
+    VkDescriptorSetLayoutBinding sprite_array{};
+    sprite_array.binding = 3;
+    sprite_array.descriptorCount = SPRITE_ARRAY_SIZE;
+    sprite_array.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    sprite_array.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+    VkPushConstantRange spriteIndex{};
+    spriteIndex.offset = 0;
+    spriteIndex.size = sizeof(int);
+    spriteIndex.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    spritePipeline->SetPushConstantRange(spriteIndex);
     spritePipeline->RegisterDescriptorSetLayoutBinding(spriteTransformBinding);
     spritePipeline->RegisterDescriptorSetLayoutBinding(spriteSampler);
     spritePipeline->RegisterDescriptorSetLayoutBinding(cameraTransformBinding);
+    spritePipeline->RegisterDescriptorSetLayoutBinding(sprite_array);
+    
 
     spritePipeline->Build();
     spritePipeline->CreateDescriptorSets(); //TODO: look into having the pipeline create the descriptor sets
     //on build.
+}
+
+void SpriteRenderer::createSpriteSampler()
+{
+    VkSamplerCreateInfo sci{};
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    sci.magFilter = VK_FILTER_LINEAR;
+    sci.minFilter = VK_FILTER_LINEAR;
+    sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    sci.anisotropyEnable = VK_TRUE;
+    sci.maxAnisotropy = 16.0f;
+    sci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    sci.unnormalizedCoordinates = VK_FALSE;
+    sci.compareEnable = VK_FALSE;
+    sci.compareOp = VK_COMPARE_OP_ALWAYS;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sci.mipLodBias = 0.0f;
+    sci.minLod = 0.0f;
+    sci.maxLod = 0.0f;
+
+    auto res = vkCreateSampler(pDevice->GetGPU(), &sci, nullptr, &spriteSampler);
+
+    for (int i = 0; i < pDevice->GetSwapchainFramebufferCount(); ++i)
+    {
+        spritePipeline->UpdateSamplerDescriptor(i, 2, spriteSampler);
+    }
 }

@@ -71,17 +71,16 @@ void app::Initialize()
     std::function<void()> callback = std::bind(&app::CreatePipelineState, this);
     pGraphics->SetPipelineStateRecreateCallback(callback);
 
-    //simpleShader = new Shader(pGraphics->GetGPU());
-    //simpleShader->LoadShader("shaders\\vs.spv", "main", VK_SHADER_STAGE_VERTEX_BIT);
-    //simpleShader->LoadShader("shaders\\ps.spv", "main", VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    //CreatePipelineState();
 
     spriteTexture = new Texture2D(pGraphics);
     spriteTexture->CreateFromFile("textures\\spriteTexture.png", true);
 
     spriteRenderer = new SpriteRenderer(pGraphics);
     spriteRenderer->Initialize(pGraphics->GetSwapchainExtent().width, pGraphics->GetSwapchainExtent().height, pGraphics->GetSwapchainFramebufferCount());
+
+    std::vector<Texture2D*> sprite_set;
+    sprite_set.push_back(spriteTexture);
+    spriteRenderer->SetSprites(sprite_set);
 }
 
 void app::Update()
@@ -99,9 +98,9 @@ void app::Render()
   
     pGraphics->BeginRenderPass();
 
-    spriteRenderer->BeginSpriteRenderPass(fIndex);
-    spriteRenderer->RenderSprite(gpuCMD,spriteTexture, glm::vec2(200.0f, 200.0f), 0.0f);
-    spriteRenderer->RenderSprite(gpuCMD, spriteTexture, glm::vec2(200.0f, 200.0f), 0.0f);
+    spriteRenderer->BeginSpriteRenderPass(gpuCMD,fIndex);
+    spriteRenderer->RenderSprite(spriteTexture, glm::vec2(200.0f, 200.0f), 0.0f);
+    //spriteRenderer->RenderSprite(gpuCMD, spriteTexture, glm::vec2(300, 200.0f), 0.0f);
     spriteRenderer->EndSpriteRenderPass();
 
     pGraphics->EndRenderPass(); //begin and end pass is the process of recording "main" command buffer

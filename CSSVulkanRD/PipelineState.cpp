@@ -112,7 +112,7 @@ void PipelineState::SetBlendState(BlendState blendState)
 
 void PipelineState::SetPushConstantRange(VkPushConstantRange range)
 {
-	throw std::runtime_error("not impl");
+	pushConstantRanges.push_back(range);
 	dirty = true;
 }
 
@@ -179,6 +179,27 @@ void PipelineState::UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, u
 	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
 }
 
+void PipelineState::UpdateDynamicUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
+{
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+	VkDescriptorBufferInfo bufferInfo{};
+	bufferInfo.buffer = gpuBuffer;
+	bufferInfo.offset = bindOffset;
+	bufferInfo.range = bindSize;
+
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0; //what the fuck is this
+	write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	write.descriptorCount = 1;
+	write.pBufferInfo = &bufferInfo;
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
 //todo: 7-26-2020 look into batching these descriptor writes per frame
 void PipelineState::UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize)
 {
@@ -218,6 +239,78 @@ void PipelineState::UpdateCombinedImageDescriptor(uint32_t descriptorSetIndex, u
 	imageInfo.imageView = imageView;
 	imageInfo.sampler = imageSampler;
 	write.pImageInfo = &imageInfo;
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
+void PipelineState::UpdateSampledImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkImageView imageView, VkDeviceSize bindOffset, VkDeviceSize bindSize)
+{
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+	VkWriteDescriptorSet write{};
+	VkDescriptorImageInfo imageInfo{};
+
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write.descriptorCount = 1;
+	
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = imageView;
+
+	write.pImageInfo = &imageInfo;
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
+void PipelineState::UpdateSampledImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, std::vector<VkImageView> imageViews)
+{
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+	VkWriteDescriptorSet write{};
+	int imageCount = imageViews.size();
+
+	std::vector<VkDescriptorImageInfo> imageInfos;
+
+	for (int i = 0; i < imageCount; ++i)
+	{
+		VkDescriptorImageInfo info{};
+		info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		info.imageView = imageViews[i];
+		imageInfos.push_back(info);
+	}
+
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	write.descriptorCount = imageCount;
+	write.pImageInfo = imageInfos.data();
+
+	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
+}
+
+void PipelineState::UpdateSamplerDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkSampler sampler)
+{
+	assert(descriptorSetIndex <= descriptorSets.size());
+
+	VkWriteDescriptorSet write{};
+	VkDescriptorImageInfo imageInfo{};
+
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = descriptorSets[descriptorSetIndex];
+	write.dstBinding = descriptorBindingIndex;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	write.descriptorCount = 1;
+
+	VkDescriptorImageInfo info{};
+	info.sampler = sampler;
+	write.pImageInfo = &info;
+
 
 	vkUpdateDescriptorSets(GPU, 1, &write, 0, nullptr);
 }

@@ -27,6 +27,9 @@ public:
 	VkSampler GetSampler() const;
 
 	void transitionImageLayout(VkFormat format, VkImageLayout prevLayout, VkImageLayout newLayout);
+
+	int GetID() const;
+	void SetID(int index);
 private:
 	VkImage texture;
 	GPUBuffer* stagingBuffer;
@@ -51,4 +54,6 @@ private:
 	uint32_t height;
 	uint32_t loadedDataSize;
 	VkFormat format;
+
+	int imageIndex;
 };

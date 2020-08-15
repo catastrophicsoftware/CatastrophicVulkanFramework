@@ -338,18 +338,28 @@ void GraphicsDevice::createCommandPools()
         cbPool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         cbPool.descriptorCount = 16;
 
+        VkDescriptorPoolSize cbPoolD{};
+        cbPoolD.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        cbPoolD.descriptorCount = 16;
+
         VkDescriptorPoolSize sbPool{};
         sbPool.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         sbPool.descriptorCount = 16;
 
-        VkDescriptorPoolSize imageSamplerPool{};
-        imageSamplerPool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imageSamplerPool.descriptorCount = 16;
+        VkDescriptorPoolSize imagePool{};
+        imagePool.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        imagePool.descriptorCount = 128;
+
+        VkDescriptorPoolSize samplerPool{};
+        samplerPool.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+        samplerPool.descriptorCount = 16;
 
         immediateContext->RegisterDescriptorPoolSize(cbPool);
+        immediateContext->RegisterDescriptorPoolSize(cbPoolD);
         immediateContext->RegisterDescriptorPoolSize(sbPool);
-        immediateContext->RegisterDescriptorPoolSize(imageSamplerPool);
-        immediateContext->CreateDescriptorPool(16);
+        immediateContext->RegisterDescriptorPoolSize(imagePool);
+        immediateContext->RegisterDescriptorPoolSize(samplerPool);
+        immediateContext->CreateDescriptorPool(1024);
     }
 
     ImmediateContext = immediateContext;
@@ -657,26 +667,6 @@ void GraphicsDevice::BeginRenderPass()
     renderArea.offset = { 0,0 };
     renderArea.extent = swapChainExtent;
     primaryRenderPass->BeginRenderPass(swapChainFramebuffers[imageIndex], pActiveFrame->cmdBuffer, renderArea);
-
-    ////VkCommandBufferBeginInfo beginInfo{};
-    ////beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    ////beginInfo.flags = 0; // Optional
-    ////beginInfo.pInheritanceInfo = nullptr; // Optional
-
-    //VkRenderPassBeginInfo renderPassInfo{};
-    //renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    //renderPassInfo.renderPass = renderPass;
-    //renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-    //renderPassInfo.renderArea.offset = { 0, 0 };
-    //renderPassInfo.renderArea.extent = swapChainExtent;
-
-    ///*VkClearValue clearColor = { 0.100f, 0.149f, 0.255f, 1.0f };
-    //renderPassInfo.clearValueCount = 1;
-    //renderPassInfo.pClearValues = &clearColor;*/ //THIS APPEARS TO DO NOTHING
-
-    //vkCmdBeginRenderPass(pActiveFrame->cmdBuffer->handle, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    //vkCmdBindPipeline(pActiveFrame->cmdBuffer->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipelineState->GetPipeline()); //TODO: determine if this needs to be here
 }
 
 void GraphicsDevice::EndRenderPass()

@@ -1,6 +1,7 @@
 #pragma once
 #include "includes.h"
 
+#define SPRITE_ARRAY_SIZE 32
 
 class GPUBuffer;
 class PipelineState;
@@ -13,6 +14,12 @@ class GraphicsDevice;
 class Texture2D;
 struct CommandBuffer;
 
+struct SpriteTexture
+{
+	Texture2D* pTexture;
+	int spriteID;
+};
+
 
 class SpriteRenderer
 {
@@ -23,14 +30,15 @@ public:
 	void Initialize(int windowWidth, int windowHeight, int numSwapchainFramebuffers);
 
 	void RenderSprite(Texture2D* Sprite, glm::vec2 position, float rotation);
-	void RenderSprite(CommandBuffer* gpuCommandBuffer, Texture2D* Sprite, glm::vec2 position, float rotation);
 
-	void BeginSpriteRenderPass(uint32_t frameIndex);
+	void BeginSpriteRenderPass(CommandBuffer* pGPUCommandBuffer, uint32_t frameIndex);
 	void EndSpriteRenderPass(bool submit=false);
 
 	glm::mat4 getTransform() const;
 
 	void RecreatePipelineState();
+
+	void SetSprites(std::vector<Texture2D*> sprite_set);
 private:
 	GraphicsDevice* pDevice;
 	GPUBuffer* cbProjection;
@@ -59,6 +67,14 @@ private:
 	bool spritePipelineBound;
 	uint32_t frameIndex;
 
-	CommandBuffer* spriteCMD;
 	void* pTransformBufferGPUMemory;
+
+	std::vector<SpriteTexture>  spriteTextures;
+	std::vector<VkFence> spriteFences;
+	CommandBuffer* pActiveSpriteCMD;
+
+	Texture2D* nullTexture;
+
+	VkSampler spriteSampler;
+	void createSpriteSampler();
 };

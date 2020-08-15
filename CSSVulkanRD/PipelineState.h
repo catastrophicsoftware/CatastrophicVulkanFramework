@@ -43,8 +43,12 @@ public:
 	void SetDescriptorPool(VkDescriptorPool pool); //watch out for this
 
 	void UpdateUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
+	void UpdateDynamicUniformBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
 	void UpdateStorageBufferDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkBuffer gpuBuffer, VkDeviceSize bindOffset, VkDeviceSize bindSize);
 	void UpdateCombinedImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkImageView imageView, VkSampler imageSampler);
+	void UpdateSampledImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkImageView imageView, VkDeviceSize bindOffset, VkDeviceSize bindSize);
+	void UpdateSampledImageDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, std::vector<VkImageView> imageViews);
+	void UpdateSamplerDescriptor(uint32_t descriptorSetIndex, uint32_t descriptorBindingIndex, VkSampler sampler);
 
 	void Build(bool isComputePipeline=false);
 	VkPipeline GetPipeline() const;

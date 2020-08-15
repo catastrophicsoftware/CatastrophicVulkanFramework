@@ -45,9 +45,9 @@ void Texture2D::Create(uint32_t width, uint32_t height, VkFormat format, VkImage
 
 	AllocateGPUMemory();
 
+	createImageView(); //8-14-2020 -- all textures get image views now
 	if (createImageSampler)
 	{
-		createImageView();
 		createSampler();
 	}
 }
@@ -317,6 +317,16 @@ void Texture2D::transitionImageLayout(VkFormat format, VkImageLayout prevLayout,
 	cmdBuf->End();
 
 	pDevice->ImmediateContext->Submit(cmdBuf,true);
+}
+
+int Texture2D::GetID() const
+{
+	return imageIndex;
+}
+
+void Texture2D::SetID(int index)
+{
+	imageIndex = index;
 }
 
 void Texture2D::createStagingResource()
