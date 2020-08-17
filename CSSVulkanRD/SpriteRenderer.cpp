@@ -41,6 +41,14 @@ void SpriteRenderer::Initialize(int windowWidth, int windowHeight, int swapchain
     createSpriteSampler();
 }
 
+/*
+// Calculate required alignment based on minimum device offset alignment
+    size_t minUboAlignment = vulkanDevice->properties.limits.minUniformBufferOffsetAlignment;
+    dynamicAlignment = sizeof(glm::mat4);
+    if (minUboAlignment > 0) {
+        dynamicAlignment = (dynamicAlignment + minUboAlignment - 1) & ~(minUboAlignment - 1);
+}*/
+
 void SpriteRenderer::RenderSprite(Texture2D* Sprite, glm::vec2 position, float rotation)
 {
     if (!spritePipelineBound)
@@ -51,8 +59,16 @@ void SpriteRenderer::RenderSprite(Texture2D* Sprite, glm::vec2 position, float r
 
     spriteTransform = glm::translate(spriteTransform, glm::vec3(position, 1));
 
-    uint32_t cbTransformOffset = sizeof(glm::mat4) * frameIndex;
-    memcpy(pTransformBufferGPUMemory, &spriteTransform, sizeof(glm::mat4));
+    size_t minUBO_Align = pDevice->GetDeviceProperties().limits.minUniformBufferOffsetAlignment;
+    size_t dynamic_align = sizeof(glm::mat4);
+    if (minUBO_Align > 0)
+    {
+        dynamic_align = (dynamic_align + minUBO_Align - 1) & ~(minUBO_Align - 1);
+    }
+    size_t finalOffset = dynamic_align * frameIndex;
+    char* pMem = (char*)pTransformBufferGPUMemory;
+    pMem = pMem + finalOffset;
+    memcpy(pMem, &spriteTransform, sizeof(glm::mat4));
 
     int id = Sprite->GetID();
 
@@ -156,7 +172,7 @@ void SpriteRenderer::createBuffers()
 
 
 	cbSpriteTransform = new GPUBuffer(pDevice);
-	cbSpriteTransform->Create(sizeof(glm::mat4) * swapchainFramebufferCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, true);
+	cbSpriteTransform->Create(pDevice->GetDeviceProperties().limits.minUniformBufferOffsetAlignment * swapchainFramebufferCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, true);
     pTransformBufferGPUMemory = cbSpriteTransform->Map();
 
 	vertexBuffer = new GPUBuffer(pDevice);
@@ -169,6 +185,18 @@ void SpriteRenderer::createBuffers()
 
     nullTexture = new Texture2D(pDevice);
     nullTexture->Create(1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    size_t minUBO_Align = pDevice->GetDeviceProperties().limits.minUniformBufferOffsetAlignment;
+    size_t dynamic_align = sizeof(glm::mat4);
+    if (minUBO_Align > 0)
+    {
+        dynamic_align = (dynamic_align + minUBO_Align - 1) & ~(minUBO_Align - 1);
+    }
+    for (int i = 0; i < pDevice->GetSwapchainFramebufferCount(); ++i)
+    {
+        size_t finalOffset = i * dynamic_align;
+        spritePipeline->UpdateUniformBufferDescriptor(i, 1, cbSpriteTransform->GetBuffer(), finalOffset, sizeof(glm::mat4));
+    }
 }
 
 void SpriteRenderer::createPipelineState()

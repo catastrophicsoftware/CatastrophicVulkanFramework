@@ -74,6 +74,7 @@ void app::Initialize()
 
     spriteTexture = new Texture2D(pGraphics);
     spriteTexture->CreateFromFile("textures\\spriteTexture.png", true);
+    spriteTexture->transitionImageLayout(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     spriteRenderer = new SpriteRenderer(pGraphics);
     spriteRenderer->Initialize(pGraphics->GetSwapchainExtent().width, pGraphics->GetSwapchainExtent().height, pGraphics->GetSwapchainFramebufferCount());
